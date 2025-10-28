@@ -1,0 +1,61 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: supplychainx-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: supplychainx
+      MYSQL_USER: scx_user
+      MYSQL_PASSWORD: scx_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - scx-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "scx_user", "-p$$MYSQL_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: supplychainx-phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: scx_user
+      PMA_PASSWORD: scx_pass
+    ports:
+      - "8081:80"
+    depends_on:
+      - mysql
+    networks:
+      - scx-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: supplychainx-app
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/supplychainx?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: scx_user
+      SPRING_DATASOURCE_PASSWORD: scx_pass
+      SPRING_LIQUIBASE_URL: jdbc:mysql://mysql:3306/supplychainx?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_LIQUIBASE_USER: scx_user
+      SPRING_LIQUIBASE_PASSWORD: scx_pass
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - scx-network
+
+volumes:
+  mysql_data:
+
+networks:
+  scx-network:
+    driver: bridge

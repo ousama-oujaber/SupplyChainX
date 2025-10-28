@@ -1,0 +1,30 @@
+# Git
+.git
+.gitignore
+
+# Maven
+target/
+.mvn/
+mvnw
+mvnw.cmd
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Docker
+Dockerfile
+docker-compose.yml
+compose.yaml
+.dockerignore
