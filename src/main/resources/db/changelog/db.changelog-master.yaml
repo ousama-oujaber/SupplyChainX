@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/01-create-users-table.yaml
+  - include:
+      file: db/changelog/02-create-procurement-tables.yaml
+  - include:
+      file: db/changelog/03-create-production-tables.yaml
+  - include:
+      file: db/changelog/04-create-delivery-tables.yaml
+  - include:
+      file: db/changelog/05-fix-products-table-schema.yaml
+  - include:
+      file: db/changelog/08-insert-test-users.yaml
