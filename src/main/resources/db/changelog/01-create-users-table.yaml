@@ -1,0 +1,76 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1-create-users-table
+      author: protocol
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: first_name
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_name
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: email
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: password
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: role
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 2-create-users-email-index
+      author: protocol
+      changes:
+        - createIndex:
+            indexName: idx_users_email
+            tableName: users
+            columns:
+              - column:
+                  name: email
+
+  - changeSet:
+      id: 3-insert-default-admin-user
+      author: protocol
+      changes:
+        - insert:
+            tableName: users
+            columns:
+              - column:
+                  name: first_name
+                  value: Admin
+              - column:
+                  name: last_name
+                  value: System
+              - column:
+                  name: email
+                  value: admin@supplychainx.com
+              - column:
+                  name: password
+                  value: $2a$10$rQ8qYXGP8Dk3vXj5x/HqOuKJE8D.GWxqYq5Z9dMkF9Y5KqZwKqGRm
+              - column:
+                  name: role
+                  value: ADMIN
+      comment: "Default admin user - password: Admin@123"
