@@ -1,0 +1,289 @@
+databaseChangeLog:
+  - changeSet:
+      id: 2-create-suppliers-table
+      author: protocol
+      changes:
+        - createTable:
+            tableName: suppliers
+            columns:
+              - column:
+                  name: id_supplier
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: contact
+                  type: VARCHAR(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: rating
+                  type: DOUBLE
+              - column:
+                  name: lead_time
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 3-create-raw-materials-table
+      author: protocol
+      changes:
+        - createTable:
+            tableName: raw_materials
+            columns:
+              - column:
+                  name: id_material
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: stock
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: stock_min
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: unit
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 4-create-supply-orders-table
+      author: protocol
+      changes:
+        - createTable:
+            tableName: supply_orders
+            columns:
+              - column:
+                  name: id_order
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: supplier_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_supply_order_supplier
+                    references: suppliers(id_supplier)
+              - column:
+                  name: order_date
+                  type: DATE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expected_delivery_date
+                  type: DATE
+
+  - changeSet:
+      id: 5-create-material-suppliers-join-table
+      author: protocol
+      changes:
+        - createTable:
+            tableName: material_suppliers
+            columns:
+              - column:
+                  name: material_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_material_suppliers_material
+                    references: raw_materials(id_material)
+              - column:
+                  name: supplier_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_material_suppliers_supplier
+                    references: suppliers(id_supplier)
+        - addPrimaryKey:
+            tableName: material_suppliers
+            columnNames: material_id, supplier_id
+            constraintName: pk_material_suppliers
+
+  - changeSet:
+      id: 6-create-supply-order-materials-join-table
+      author: protocol
+      changes:
+        - createTable:
+            tableName: supply_order_materials
+            columns:
+              - column:
+                  name: order_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_supply_order_materials_order
+                    references: supply_orders(id_order)
+              - column:
+                  name: material_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_supply_order_materials_material
+                    references: raw_materials(id_material)
+        - addPrimaryKey:
+            tableName: supply_order_materials
+            columnNames: order_id, material_id
+            constraintName: pk_supply_order_materials
+
+  - changeSet:
+      id: 7-create-procurement-indexes
+      author: protocol
+      changes:
+        - createIndex:
+            indexName: idx_supplier_name
+            tableName: suppliers
+            columns:
+              - column:
+                  name: name
+        - createIndex:
+            indexName: idx_material_name
+            tableName: raw_materials
+            columns:
+              - column:
+                  name: name
+        - createIndex:
+            indexName: idx_material_stock
+            tableName: raw_materials
+            columns:
+              - column:
+                  name: stock
+        - createIndex:
+            indexName: idx_supply_order_status
+            tableName: supply_orders
+            columns:
+              - column:
+                  name: status
+        - createIndex:
+            indexName: idx_supply_order_date
+            tableName: supply_orders
+            columns:
+              - column:
+                  name: order_date
+
+  - changeSet:
+      id: 8-insert-sample-procurement-data
+      author: protocol
+      changes:
+        # Insert sample suppliers
+        - insert:
+            tableName: suppliers
+            columns:
+              - column:
+                  name: name
+                  value: "ABC Materials Corp"
+              - column:
+                  name: contact
+                  value: "contact@abcmaterials.com | +1-555-0100"
+              - column:
+                  name: rating
+                  value: 4.5
+              - column:
+                  name: lead_time
+                  value: 7
+        - insert:
+            tableName: suppliers
+            columns:
+              - column:
+                  name: name
+                  value: "XYZ Supplies Ltd"
+              - column:
+                  name: contact
+                  value: "sales@xyzsupplies.com | +1-555-0200"
+              - column:
+                  name: rating
+                  value: 4.0
+              - column:
+                  name: lead_time
+                  value: 10
+        - insert:
+            tableName: suppliers
+            columns:
+              - column:
+                  name: name
+                  value: "Global Materials Inc"
+              - column:
+                  name: contact
+                  value: "info@globalmaterials.com | +1-555-0300"
+              - column:
+                  name: rating
+                  value: 4.8
+              - column:
+                  name: lead_time
+                  value: 5
+
+        # Insert sample raw materials
+        - insert:
+            tableName: raw_materials
+            columns:
+              - column:
+                  name: name
+                  value: "Steel Sheets"
+              - column:
+                  name: stock
+                  value: 500
+              - column:
+                  name: stock_min
+                  value: 100
+              - column:
+                  name: unit
+                  value: "kg"
+        - insert:
+            tableName: raw_materials
+            columns:
+              - column:
+                  name: name
+                  value: "Aluminum Rods"
+              - column:
+                  name: stock
+                  value: 200
+              - column:
+                  name: stock_min
+                  value: 50
+              - column:
+                  name: unit
+                  value: "kg"
+        - insert:
+            tableName: raw_materials
+            columns:
+              - column:
+                  name: name
+                  value: "Plastic Pellets"
+              - column:
+                  name: stock
+                  value: 30
+              - column:
+                  name: stock_min
+                  value: 100
+              - column:
+                  name: unit
+                  value: "kg"
+      comment: "Sample data for testing procurement module"
