@@ -1,0 +1,167 @@
+databaseChangeLog:
+  - changeSet:
+      id: 04-create-delivery-tables
+      author: supplychainx
+      changes:
+        # Create customers table
+        - createTable:
+            tableName: customers
+            columns:
+              - column:
+                  name: id_customer
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: address
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: city
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: true
+
+        # Create customer_orders table
+        - createTable:
+            tableName: customer_orders
+            columns:
+              - column:
+                  name: id_order
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: customer_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: product_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: quantity
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+
+        # Create deliveries table
+        - createTable:
+            tableName: deliveries
+            columns:
+              - column:
+                  name: id_delivery
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: order_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: vehicle
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: driver
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: status
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: delivery_date
+                  type: DATE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: cost
+                  type: DECIMAL(10,2)
+                  constraints:
+                    nullable: true
+
+        # Add foreign keys
+        - addForeignKeyConstraint:
+            baseTableName: customer_orders
+            baseColumnNames: customer_id
+            referencedTableName: customers
+            referencedColumnNames: id_customer
+            constraintName: fk_customer_orders_customer
+            onDelete: CASCADE
+
+        - addForeignKeyConstraint:
+            baseTableName: customer_orders
+            baseColumnNames: product_id
+            referencedTableName: products
+            referencedColumnNames: id_product
+            constraintName: fk_customer_orders_product
+            onDelete: RESTRICT
+
+        - addForeignKeyConstraint:
+            baseTableName: deliveries
+            baseColumnNames: order_id
+            referencedTableName: customer_orders
+            referencedColumnNames: id_order
+            constraintName: fk_deliveries_order
+            onDelete: CASCADE
+
+        # Add indexes for performance
+        - createIndex:
+            tableName: customer_orders
+            indexName: idx_customer_orders_customer
+            columns:
+              - column:
+                  name: customer_id
+
+        - createIndex:
+            tableName: customer_orders
+            indexName: idx_customer_orders_product
+            columns:
+              - column:
+                  name: product_id
+
+        - createIndex:
+            tableName: customer_orders
+            indexName: idx_customer_orders_status
+            columns:
+              - column:
+                  name: status
+
+        - createIndex:
+            tableName: deliveries
+            indexName: idx_deliveries_status
+            columns:
+              - column:
+                  name: status
+
+        - createIndex:
+            tableName: deliveries
+            indexName: idx_deliveries_date
+            columns:
+              - column:
+                  name: delivery_date
