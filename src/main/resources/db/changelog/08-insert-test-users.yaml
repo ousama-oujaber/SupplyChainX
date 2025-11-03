@@ -1,0 +1,39 @@
+databaseChangeLog:
+  - changeSet:
+      id: 08-insert-test-users
+      author: protocol
+      changes:
+        # Chef de Production - password: chef123
+        - insert:
+            tableName: users
+            columns:
+              - column:
+                  name: first_name
+                  value: Jean
+              - column:
+                  name: last_name
+                  value: Dupont
+              - column:
+                  name: email
+                  value: chef.production@supplychainx.com
+              - column:
+                  name: password
+                  value: $2a$10$vZfh8H4vg3YjW5Rpr5Q8YeYqE6mZ9l7jB6X8qK3nL2mQ9yR5tT6uW
+              - column:
+                  name: role
+                  value: CHEF_PRODUCTION
+
+      comment: "Test users - password: chef123"
+
+  - changeSet:
+      id: 09-update-admin-password
+      author: protocol
+      changes:
+        - update:
+            tableName: users
+            columns:
+              - column:
+                  name: password
+                  value: $2a$10$N9qo8uLOickgx2ZMRZoM8eaVqP2fCq7j8jm.EjNTyZL4FJ2P0K3Da
+            where: email = 'admin@supplychainx.com'
+      comment: "Update admin password - new password: admin123"
