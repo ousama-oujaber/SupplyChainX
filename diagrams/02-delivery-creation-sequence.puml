@@ -1,0 +1,209 @@
+@startuml Delivery Creation with Order Status Synchronization
+!theme cerulean-outline
+title Delivery Creation - Complex Scenario\nOrder Status Synchronization & Dynamic Cost Calculation
+
+actor "Logistics Manager" as LM
+participant "DeliveryController" as Controller
+participant "SecurityAspect" as Security
+participant "DeliveryService" as DeliveryService
+participant "CustomerOrderRepository" as OrderRepo
+participant "ProductRepository" as ProductRepo
+participant "DeliveryRepository" as DeliveryRepo
+participant "DeliveryMapper" as Mapper
+database "MySQL Database" as DB
+
+== Authentication & Authorization ==
+LM -> Controller: POST /api/deliveries\n{orderId, vehicle, driver,\n deliveryDate}
+activate Controller
+Controller -> Security: @CheckRole\n(RESPONSABLE_LOGISTIQUE,\n SUPERVISEUR_LIVRAISONS)
+activate Security
+Security -> Security: Validate credentials\nfrom HTTP headers
+alt Authentication Failed
+    Security --> Controller: 401 Unauthorized
+    Controller --> LM: Error: Invalid credentials
+else Authentication Success
+    Security --> Controller: Authorization granted
+    deactivate Security
+end
+
+== Delivery Creation Process ==
+Controller -> DeliveryService: createDelivery(deliveryDTO)
+activate DeliveryService
+note right of DeliveryService
+  Log: "Creating new delivery
+  for order ID: {orderId}"
+end note
+
+== Customer Order Validation ==
+DeliveryService -> OrderRepo: findById(orderId)
+activate OrderRepo
+OrderRepo -> DB: SELECT co.*, p.*, c.*\nFROM customer_orders co\nJOIN products p ON co.product_id = p.id_product\nJOIN customers c ON co.customer_id = c.id_customer\nWHERE co.id_order = ?
+activate DB
+DB --> OrderRepo: CustomerOrder with Product & Customer
+deactivate DB
+
+alt Order Not Found
+    OrderRepo --> DeliveryService: Optional.empty()
+    DeliveryService --> Controller: CustomerOrderNotFoundException
+    Controller --> LM: 404 Not Found\n"Customer order with ID {orderId} not found"
+else Order Exists
+    OrderRepo --> DeliveryService: Optional<CustomerOrder>
+    deactivate OrderRepo
+
+    note right of DeliveryService
+      CustomerOrder contains:
+      - Product (with cost, stock)
+      - Customer (with address, city)
+      - Quantity ordered
+      - Current order status
+    end note
+end
+
+== Delivery Entity Creation ==
+DeliveryService -> Mapper: toEntity(deliveryDTO)
+activate Mapper
+Mapper --> DeliveryService: Delivery entity
+deactivate Mapper
+
+DeliveryService -> DeliveryService: Set order reference:\ndelivery.setOrder(customerOrder)
+
+== Status Initialization ==
+alt Status not provided in DTO
+    DeliveryService -> DeliveryService: Set default status:\ndelivery.setStatus(PLANIFIEE)
+    note right of DeliveryService
+      Default initial state
+      for new deliveries
+    end note
+end
+
+== Dynamic Cost Calculation ==
+alt Cost not provided or is 0.0
+    DeliveryService -> DeliveryService: calculateCost(customerOrder)
+    activate DeliveryService
+    note right of DeliveryService
+      Cost Calculation Formula:
+      ------------------------
+      baseCost = 50.0 (fixed)
+      productCost = order.product.cost
+      quantity = order.quantity
+
+      calculatedCost = baseCost +
+                       (productCost × quantity × 0.1)
+
+      Round to 2 decimal places
+
+      Example:
+      - Base: 50.0
+      - Product cost: 500.0
+      - Quantity: 10
+      - Result: 50 + (500 × 10 × 0.1) = 550.0
+    end note
+    DeliveryService --> DeliveryService: Calculated cost
+    deactivate DeliveryService
+
+    DeliveryService -> DeliveryService: delivery.setCost(calculatedCost)
+end
+
+== Order Status Synchronization ==
+DeliveryService -> DeliveryService: Check current order status
+note right of DeliveryService
+  Synchronize order status
+  when delivery is created
+end note
+
+alt Order Status == EN_PREPARATION
+    DeliveryService -> DeliveryService: Update order:\ncustomerOrder.setStatus(EN_ROUTE)
+
+    DeliveryService -> OrderRepo: save(customerOrder)
+    activate OrderRepo
+    OrderRepo -> DB: UPDATE customer_orders\nSET status = 'EN_ROUTE',\n    updated_at = NOW()\nWHERE id_order = ?
+    activate DB
+    DB --> OrderRepo: Update successful
+    deactivate DB
+    OrderRepo --> DeliveryService: Updated CustomerOrder
+    deactivate OrderRepo
+
+    note right of DeliveryService
+      Order transitions:
+      EN_PREPARATION → EN_ROUTE
+      (automatically triggered by delivery creation)
+    end note
+end
+
+== Persist Delivery ==
+DeliveryService -> DeliveryRepo: save(delivery)
+activate DeliveryRepo
+DeliveryRepo -> DB: INSERT INTO deliveries\n(order_id, vehicle, driver,\n delivery_date, status, cost,\n created_at)
+activate DB
+DB --> DeliveryRepo: Generated ID
+deactivate DB
+DeliveryRepo --> DeliveryService: Saved Delivery
+deactivate DeliveryRepo
+
+note right of DeliveryService
+  Log: "Delivery created successfully
+  with ID: {deliveryId}"
+end note
+
+== Response Preparation ==
+DeliveryService -> Mapper: toDTO(savedDelivery)
+activate Mapper
+Mapper -> Mapper: Include order details,\ncustomer info, product info
+Mapper --> DeliveryService: DeliveryDTO
+deactivate Mapper
+
+DeliveryService --> Controller: DeliveryDTO
+deactivate DeliveryService
+
+Controller --> LM: 201 Created\n{deliveryId, orderId, vehicle,\n driver, deliveryDate, status: "PLANIFIEE",\n cost, customerInfo, productInfo}
+deactivate Controller
+
+== Post-Creation Workflow ==
+note over LM, DB
+  **Subsequent Delivery Updates:**
+
+  1. Status: PLANIFIEE → EN_COURS
+     - Trigger: updateDelivery(id, {status: "EN_COURS"})
+     - Effect: Order status → EN_ROUTE (confirmed)
+
+  2. Status: EN_COURS → LIVREE
+     - Trigger: updateDelivery(id, {status: "LIVREE"})
+     - Effect: Order status → LIVREE
+     - Product stock decremented
+
+  3. Cost Recalculation:
+     - Trigger: calculateDeliveryCost(deliveryId)
+     - Recalculates based on current product cost
+     - Updates delivery entity
+
+  **Cascading Effects:**
+  - Delivery status changes propagate to order status
+  - Maintains data consistency across entities
+  - Provides complete delivery tracking
+end note
+
+== Alternative Flows ==
+
+note over LM, DB
+  **Error Scenarios:**
+
+  1. Order Already Has Delivery
+     - Check: delivery exists for orderId
+     - Response: 409 Conflict
+
+  2. Insufficient Product Stock
+     - Check: product.stock < order.quantity
+     - Response: 400 Bad Request
+
+  3. Invalid Order Status
+     - Order status: CANCELLED
+     - Response: 400 Bad Request
+     - Message: "Cannot create delivery for cancelled order"
+
+  4. Product Not Found
+     - Order references deleted product
+     - Response: 404 Not Found
+end note
+
+@enduml
+
