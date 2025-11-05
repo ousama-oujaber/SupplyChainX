@@ -1,0 +1,150 @@
+@startuml Production Order Creation with Material Availability Check
+!theme cerulean-outline
+title Production Order Creation - Complex Scenario\nMaterial Availability Validation & Stock Management
+
+actor "Production Manager" as PM
+participant "ProductionOrderController" as Controller
+participant "SecurityAspect" as Security
+participant "ProductionOrderService" as ProdService
+participant "ProductRepository" as ProdRepo
+participant "BillOfMaterialService" as BOMService
+participant "BillOfMaterialRepository" as BOMRepo
+participant "RawMaterialRepository" as RawMatRepo
+participant "ProductionOrderRepository" as ProdOrderRepo
+participant "ProductionOrderMapper" as Mapper
+database "MySQL Database" as DB
+
+== Authentication & Authorization ==
+PM -> Controller: POST /api/production/orders\n{productId, quantity, startDate, isPriority}
+activate Controller
+Controller -> Security: @CheckRole\n(CHEF_PRODUCTION, PLANIFICATEUR)
+activate Security
+Security -> Security: Validate email & password\nfrom HTTP headers
+alt Authentication Failed
+    Security --> Controller: 401 Unauthorized
+    Controller --> PM: Error: Invalid credentials
+else Authentication Success
+    Security --> Controller: Authorization granted
+    deactivate Security
+end
+
+== Production Order Creation ==
+Controller -> ProdService: createProductionOrder(productionOrderDTO)
+activate ProdService
+note right of ProdService
+  Log: "Creating new production
+  order for product ID: {productId}"
+end note
+
+== Product Validation ==
+ProdService -> ProdRepo: findById(productId)
+activate ProdRepo
+ProdRepo -> DB: SELECT * FROM products\nWHERE id_product = ?
+activate DB
+DB --> ProdRepo: Product entity
+deactivate DB
+alt Product Not Found
+    ProdRepo --> ProdService: Optional.empty()
+    ProdService --> Controller: ProductNotFoundException
+    Controller --> PM: 404 Not Found\n"Product with ID {productId} not found"
+else Product Exists
+    ProdRepo --> ProdService: Optional<Product>
+    deactivate ProdRepo
+end
+
+== Material Availability Check ==
+ProdService -> BOMService: checkMaterialsAvailability(productId, quantity)
+activate BOMService
+note right of BOMService
+  Calculate required materials
+  based on Bill of Materials
+end note
+
+BOMService -> BOMRepo: findByProductIdProduct(productId)
+activate BOMRepo
+BOMRepo -> DB: SELECT * FROM bill_of_materials\nWHERE product_id = ?
+activate DB
+DB --> BOMRepo: List<BillOfMaterial>
+deactivate DB
+BOMRepo --> BOMService: List<BillOfMaterial>
+deactivate BOMRepo
+
+loop For each BillOfMaterial
+    BOMService -> BOMService: Calculate required quantity\nrequired = bom.quantity * orderQuantity
+
+    BOMService -> RawMatRepo: findById(materialId)
+    activate RawMatRepo
+    RawMatRepo -> DB: SELECT * FROM raw_materials\nWHERE id_material = ?
+    activate DB
+    DB --> RawMatRepo: RawMaterial entity
+    deactivate DB
+    RawMatRepo --> BOMService: RawMaterial
+    deactivate RawMatRepo
+
+    BOMService -> BOMService: Compare:\navailable = material.stock\nif (available < required)\n  return false
+end
+
+alt Insufficient Materials
+    BOMService --> ProdService: false (materials not available)
+
+    ProdService -> ProdService: getMissingMaterialsDetails(productId, quantity)
+    note right of ProdService
+      Build detailed message:
+      "Steel (Required: 100, Available: 50),
+       Plastic (Required: 200, Available: 150)"
+    end note
+
+    ProdService --> Controller: InsufficientMaterialsException\n(productId, missingMaterialsDetails)
+    Controller --> PM: 400 Bad Request\n"Insufficient materials for product {productId}:\n{details}"
+
+else Materials Available
+    BOMService --> ProdService: true (materials available)
+    deactivate BOMService
+
+    == Create Production Order ==
+    ProdService -> Mapper: toEntity(productionOrderDTO)
+    activate Mapper
+    Mapper --> ProdService: ProductionOrder entity
+    deactivate Mapper
+
+    ProdService -> ProdService: Set Product reference\nSet default isPriority = false if null\nSet status = EN_ATTENTE
+
+    ProdService -> ProdOrderRepo: save(productionOrder)
+    activate ProdOrderRepo
+    ProdOrderRepo -> DB: INSERT INTO production_orders\n(product_id, quantity, status, start_date,\n end_date, is_priority, created_at)
+    activate DB
+    DB --> ProdOrderRepo: Generated ID
+    deactivate DB
+    ProdOrderRepo --> ProdService: Saved ProductionOrder
+    deactivate ProdOrderRepo
+
+    note right of ProdService
+      Log: "Production order created
+      successfully with ID: {orderId}"
+    end note
+
+    ProdService -> Mapper: toDTO(savedOrder)
+    activate Mapper
+    Mapper --> ProdService: ProductionOrderDTO
+    deactivate Mapper
+
+    ProdService -> ProdService: Set materialsAvailable = true in DTO
+
+    ProdService --> Controller: ProductionOrderDTO (with orderId)
+    deactivate ProdService
+
+    Controller --> PM: 201 Created\n{orderId, productId, quantity, status,\n isPriority, materialsAvailable: true}
+    deactivate Controller
+end
+
+== Post-Creation Events ==
+note over PM, DB
+  After successful creation:
+  1. Materials are reserved (tracked by production order)
+  2. Order appears in priority/standard queue
+  3. Production scheduler can begin processing
+  4. Estimated production time can be calculated
+end note
+
+@enduml
+
