@@ -1,0 +1,142 @@
+databaseChangeLog:
+  - changeSet:
+      id: 05-fix-products-table-schema
+      author: protocol
+      changes:
+        # Remove description column (not needed in entity)
+        - dropColumn:
+            tableName: products
+            columnName: description
+
+        # Rename unit_price to cost
+        - renameColumn:
+            tableName: products
+            oldColumnName: unit_price
+            newColumnName: cost
+            columnDataType: DECIMAL(10, 2)
+
+        # Add stock column
+        - addColumn:
+            tableName: products
+            columns:
+              - column:
+                  name: stock
+                  type: INT
+                  defaultValue: 0
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 06-fix-bill-of-materials-columns
+      author: protocol
+      changes:
+        # Drop existing foreign keys first
+        - dropForeignKeyConstraint:
+            baseTableName: bill_of_materials
+            constraintName: fk_bom_product
+
+        - dropForeignKeyConstraint:
+            baseTableName: bill_of_materials
+            constraintName: fk_bom_material
+
+        # Drop existing indexes
+        - dropIndex:
+            tableName: bill_of_materials
+            indexName: idx_bom_product
+
+        - dropIndex:
+            tableName: bill_of_materials
+            indexName: idx_bom_material
+
+        # Rename columns to match entity
+        - renameColumn:
+            tableName: bill_of_materials
+            oldColumnName: id_product
+            newColumnName: product_id
+            columnDataType: BIGINT
+
+        - renameColumn:
+            tableName: bill_of_materials
+            oldColumnName: id_material
+            newColumnName: material_id
+            columnDataType: BIGINT
+
+        # Change quantity from DOUBLE to INT to match entity
+        - modifyDataType:
+            tableName: bill_of_materials
+            columnName: quantity
+            newDataType: INT
+
+        # Re-add foreign keys with new column names
+        - addForeignKeyConstraint:
+            baseTableName: bill_of_materials
+            baseColumnNames: product_id
+            constraintName: fk_bom_product
+            referencedTableName: products
+            referencedColumnNames: id_product
+            onDelete: CASCADE
+            onUpdate: CASCADE
+
+        - addForeignKeyConstraint:
+            baseTableName: bill_of_materials
+            baseColumnNames: material_id
+            constraintName: fk_bom_material
+            referencedTableName: raw_materials
+            referencedColumnNames: id_material
+            onDelete: CASCADE
+            onUpdate: CASCADE
+
+        # Re-create indexes with new column names
+        - createIndex:
+            indexName: idx_bom_product
+            tableName: bill_of_materials
+            columns:
+              - column:
+                  name: product_id
+
+        - createIndex:
+            indexName: idx_bom_material
+            tableName: bill_of_materials
+            columns:
+              - column:
+                  name: material_id
+
+  - changeSet:
+      id: 07-fix-production-orders-columns
+      author: protocol
+      changes:
+        # Drop existing foreign key
+        - dropForeignKeyConstraint:
+            baseTableName: production_orders
+            constraintName: fk_production_order_product
+
+        # Drop existing index
+        - dropIndex:
+            tableName: production_orders
+            indexName: idx_production_order_product
+
+        # Rename id_product to product_id
+        - renameColumn:
+            tableName: production_orders
+            oldColumnName: id_product
+            newColumnName: product_id
+            columnDataType: BIGINT
+
+        # Re-add foreign key with new column name
+        - addForeignKeyConstraint:
+            baseTableName: production_orders
+            baseColumnNames: product_id
+            constraintName: fk_production_order_product
+            referencedTableName: products
+            referencedColumnNames: id_product
+            onDelete: CASCADE
+            onUpdate: CASCADE
+
+        # Re-create index with new column name
+        - createIndex:
+            indexName: idx_production_order_product
+            tableName: production_orders
+            columns:
+              - column:
+                  name: product_id
+
