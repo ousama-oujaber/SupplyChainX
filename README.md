@@ -364,3 +364,57 @@ supplychainx/
 
 #### Deliveries
 - **US40**: Create a delivery for an order and calculate its total cost.
+
+---
+
+## 🚀 CI/CD Pipeline
+
+This project uses **Jenkins** for Continuous Integration and Continuous Deployment.
+
+### Quick Start
+
+1. **Start Jenkins**:
+   ```bash
+   docker-compose -f docker-compose.jenkins.yaml up -d
+   ```
+
+2. **Access Jenkins**: <http://localhost:8090>
+
+3. **Get Initial Password**:
+   ```bash
+   docker exec supplychainx-jenkins cat /var/jenkins_home/secrets/initialAdminPassword
+   ```
+
+4. **Use Helper Script**:
+   ```bash
+   ./jenkins-helper.sh
+   ```
+
+### Pipeline Features
+
+- ✅ Automated builds on every push
+- ✅ Unit and integration testing
+- ✅ Code quality analysis
+- ✅ Docker image building and pushing
+- ✅ Security vulnerability scanning
+- ✅ Automated deployment to environments
+- ✅ Email and Slack notifications
+
+### Branch Strategy
+
+- **`main`**: Production environment (manual approval)
+- **`staging`**: Staging environment (manual approval)
+- **`develop`**: Development environment (auto-deploy)
+- **`feature/*`**: Build and test only
+
+### Documentation
+
+- 📖 **[Complete Setup Guide](JENKINS_SETUP.md)** - Detailed Jenkins configuration
+- 📖 **[CI/CD Overview](CI-CD-README.md)** - Pipeline architecture and workflow
+- 📖 **[Quick Reference](JENKINS-QUICK-REFERENCE.md)** - Commands and shortcuts
+
+### Pipeline Stages
+
+1. Checkout → 2. Build → 3. Test → 4. Code Quality → 5. Package → 6. Docker Build → 7. Push to Registry → 8. Security Scan → 9. Deploy → 10. Integration Tests → 11. Cleanup
+
+For more information, see the [CI/CD documentation](CI-CD-README.md).

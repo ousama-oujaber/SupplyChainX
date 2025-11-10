@@ -1,0 +1,42 @@
+# .jenkinsignore
+# Files to ignore during Jenkins builds
+
+# IDE files
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Build outputs (handled by Maven)
+target/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Environment files
+.env.local
+.env.*.local
+
+# Docker volumes data
+mysql_data/
+
+# Git
+.git/
+.gitignore
+
+# Documentation drafts
+docs/drafts/

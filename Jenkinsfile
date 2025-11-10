@@ -1,0 +1,255 @@
+pipeline {
+    agent any
+    
+    environment {
+        // Docker Hub credentials (configure in Jenkins)
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
+        DOCKER_IMAGE = 'your-dockerhub-username/supplychainx'
+        IMAGE_TAG = "${BUILD_NUMBER}"
+        
+        // GitHub credentials
+        GIT_CREDENTIALS = credentials('github-credentials')
+        
+        // MySQL credentials for testing
+        MYSQL_ROOT_PASSWORD = 'root'
+        MYSQL_DATABASE = 'supplychainx_test'
+        MYSQL_USER = 'scx_user'
+        MYSQL_PASSWORD = 'scx_pass'
+    }
+    
+    tools {
+        maven 'Maven-3.9.6'
+        jdk 'JDK-17'
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo '📦 Checking out code from GitHub...'
+                checkout scm
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                echo '🔨 Building application with Maven...'
+                sh '''
+                    mvn clean compile -DskipTests
+                '''
+            }
+        }
+        
+        stage('Test') {
+            steps {
+                echo '🧪 Running unit tests...'
+                sh '''
+                    mvn test
+                '''
+            }
+            post {
+                always {
+                    junit '**/target/surefire-reports/*.xml'
+                    jacoco(
+                        execPattern: '**/target/jacoco.exec',
+                        classPattern: '**/target/classes',
+                        sourcePattern: '**/src/main/java'
+                    )
+                }
+            }
+        }
+        
+        stage('Code Quality Analysis') {
+            parallel {
+                stage('SonarQube Analysis') {
+                    when {
+                        expression { 
+                            return env.SONARQUBE_ENABLED == 'true' 
+                        }
+                    }
+                    steps {
+                        echo '📊 Running SonarQube analysis...'
+                        withSonarQubeEnv('SonarQube') {
+                            sh '''
+                                mvn sonar:sonar \
+                                  -Dsonar.projectKey=supplychainx \
+                                  -Dsonar.host.url=${SONAR_HOST_URL} \
+                                  -Dsonar.login=${SONAR_AUTH_TOKEN}
+                            '''
+                        }
+                    }
+                }
+                
+                stage('Checkstyle') {
+                    steps {
+                        echo '✅ Running Checkstyle...'
+                        sh 'mvn checkstyle:checkstyle || true'
+                    }
+                }
+            }
+        }
+        
+        stage('Package') {
+            steps {
+                echo '📦 Packaging application...'
+                sh '''
+                    mvn package -DskipTests
+                '''
+            }
+            post {
+                success {
+                    archiveArtifacts artifacts: '**/target/*.jar', fingerprint: true
+                }
+            }
+        }
+        
+        stage('Build Docker Image') {
+            steps {
+                echo '🐳 Building Docker image...'
+                script {
+                    dockerImage = docker.build("${DOCKER_IMAGE}:${IMAGE_TAG}")
+                    docker.build("${DOCKER_IMAGE}:latest")
+                }
+            }
+        }
+        
+        stage('Push Docker Image') {
+            steps {
+                echo '📤 Pushing Docker image to Docker Hub...'
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', 'dockerhub-credentials') {
+                        dockerImage.push("${IMAGE_TAG}")
+                        dockerImage.push("latest")
+                    }
+                }
+            }
+        }
+        
+        stage('Security Scan') {
+            steps {
+                echo '🔒 Scanning Docker image for vulnerabilities...'
+                sh '''
+                    docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+                        aquasec/trivy:latest image --severity HIGH,CRITICAL \
+                        ${DOCKER_IMAGE}:${IMAGE_TAG} || true
+                '''
+            }
+        }
+        
+        stage('Deploy to Development') {
+            when {
+                branch 'develop'
+            }
+            steps {
+                echo '🚀 Deploying to Development environment...'
+                sh '''
+                    docker-compose -f compose.yaml down || true
+                    docker-compose -f compose.yaml up -d
+                '''
+            }
+        }
+        
+        stage('Deploy to Staging') {
+            when {
+                branch 'staging'
+            }
+            steps {
+                echo '🚀 Deploying to Staging environment...'
+                input message: 'Deploy to Staging?', ok: 'Deploy'
+                sh '''
+                    docker-compose -f compose.staging.yaml down || true
+                    docker-compose -f compose.staging.yaml up -d
+                '''
+            }
+        }
+        
+        stage('Deploy to Production') {
+            when {
+                branch 'main'
+            }
+            steps {
+                echo '🚀 Deploying to Production environment...'
+                input message: 'Deploy to Production?', ok: 'Deploy'
+                sh '''
+                    # Pull latest images
+                    docker pull ${DOCKER_IMAGE}:${IMAGE_TAG}
+                    
+                    # Deploy with zero downtime
+                    docker-compose -f compose.yaml up -d --no-deps --build app
+                    
+                    # Health check
+                    sleep 30
+                    curl -f http://localhost:8080/actuator/health || exit 1
+                '''
+            }
+        }
+        
+        stage('Integration Tests') {
+            when {
+                anyOf {
+                    branch 'main'
+                    branch 'develop'
+                }
+            }
+            steps {
+                echo '🧪 Running integration tests...'
+                sh '''
+                    # Wait for application to be ready
+                    sleep 30
+                    
+                    # Run integration tests
+                    mvn verify -Pintegration-tests || true
+                '''
+            }
+        }
+        
+        stage('Cleanup') {
+            steps {
+                echo '🧹 Cleaning up...'
+                sh '''
+                    docker system prune -f
+                    docker image prune -f
+                '''
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo '📧 Sending notifications...'
+            emailext (
+                subject: "Jenkins Build ${currentBuild.result}: ${env.JOB_NAME} - ${env.BUILD_NUMBER}",
+                body: """
+                    <p>Build Status: ${currentBuild.result}</p>
+                    <p>Job: ${env.JOB_NAME}</p>
+                    <p>Build Number: ${env.BUILD_NUMBER}</p>
+                    <p>Build URL: ${env.BUILD_URL}</p>
+                    <p>Git Branch: ${env.GIT_BRANCH}</p>
+                    <p>Git Commit: ${env.GIT_COMMIT}</p>
+                """,
+                to: 'your-email@example.com',
+                mimeType: 'text/html'
+            )
+        }
+        success {
+            echo '✅ Pipeline completed successfully!'
+            slackSend (
+                color: 'good',
+                message: "✅ SUCCESS: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)"
+            )
+        }
+        failure {
+            echo '❌ Pipeline failed!'
+            slackSend (
+                color: 'danger',
+                message: "❌ FAILED: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)"
+            )
+        }
+        unstable {
+            echo '⚠️ Pipeline is unstable!'
+        }
+        cleanup {
+            echo '🧹 Cleaning workspace...'
+            cleanWs()
+        }
+    }
+}
