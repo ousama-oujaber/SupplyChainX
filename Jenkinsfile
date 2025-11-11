@@ -2,13 +2,9 @@ pipeline {
     agent any
     
     environment {
-        // Docker Hub credentials (configure in Jenkins)
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
+        // Docker configuration (credentials only needed if Docker stages are enabled)
         DOCKER_IMAGE = 'your-dockerhub-username/supplychainx'
         IMAGE_TAG = "${BUILD_NUMBER}"
-        
-        // GitHub credentials
-        GIT_CREDENTIALS = credentials('github-credentials')
         
         // MySQL credentials for testing
         MYSQL_ROOT_PASSWORD = 'root'
