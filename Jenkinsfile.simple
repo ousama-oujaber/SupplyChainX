@@ -1,0 +1,78 @@
+pipeline {
+    agent any
+    
+    environment {
+        // Docker configuration (optional - remove Docker stages if not needed)
+        DOCKER_IMAGE = 'your-dockerhub-username/supplychainx'
+        IMAGE_TAG = "${BUILD_NUMBER}"
+    }
+    
+    tools {
+        maven 'Maven-3.9.6'
+        jdk 'JDK-17'
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo '📦 Checking out code from GitHub...'
+                checkout scm
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                echo '🔨 Building application with Maven...'
+                sh 'mvn clean compile -DskipTests'
+            }
+        }
+        
+        stage('Test') {
+            steps {
+                echo '🧪 Running unit tests...'
+                sh 'mvn test'
+            }
+            post {
+                always {
+                    junit '**/target/surefire-reports/*.xml'
+                }
+            }
+        }
+        
+        stage('Code Quality') {
+            steps {
+                echo '📊 Running JaCoCo code coverage...'
+                sh 'mvn jacoco:report'
+            }
+            post {
+                always {
+                    jacoco(
+                        execPattern: '**/target/jacoco.exec',
+                        classPattern: '**/target/classes',
+                        sourcePattern: '**/src/main/java'
+                    )
+                }
+            }
+        }
+        
+        stage('Package') {
+            steps {
+                echo '📦 Packaging application...'
+                sh 'mvn package -DskipTests'
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo '✅ Pipeline completed successfully!'
+            echo "📦 Artifact: target/SupplyChainX-0.0.1-SNAPSHOT.jar"
+        }
+        failure {
+            echo '❌ Pipeline failed! Check the logs above.'
+        }
+        always {
+            echo '🧹 Build finished.'
+        }
+    }
+}

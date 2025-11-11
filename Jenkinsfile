@@ -102,6 +102,8 @@ pipeline {
             }
         }
         
+        // Docker stages commented out - uncomment after adding dockerhub-credentials
+        /*
         stage('Build Docker Image') {
             steps {
                 echo '🐳 Building Docker image...'
@@ -123,7 +125,10 @@ pipeline {
                 }
             }
         }
+        */
         
+        // Security Scan - requires Docker image to be built
+        /*
         stage('Security Scan') {
             steps {
                 echo '🔒 Scanning Docker image for vulnerabilities...'
@@ -134,6 +139,7 @@ pipeline {
                 '''
             }
         }
+        */
         
         stage('Deploy to Development') {
             when {
@@ -214,42 +220,19 @@ pipeline {
     }
     
     post {
-        always {
-            echo '📧 Sending notifications...'
-            emailext (
-                subject: "Jenkins Build ${currentBuild.result}: ${env.JOB_NAME} - ${env.BUILD_NUMBER}",
-                body: """
-                    <p>Build Status: ${currentBuild.result}</p>
-                    <p>Job: ${env.JOB_NAME}</p>
-                    <p>Build Number: ${env.BUILD_NUMBER}</p>
-                    <p>Build URL: ${env.BUILD_URL}</p>
-                    <p>Git Branch: ${env.GIT_BRANCH}</p>
-                    <p>Git Commit: ${env.GIT_COMMIT}</p>
-                """,
-                to: 'your-email@example.com',
-                mimeType: 'text/html'
-            )
-        }
         success {
             echo '✅ Pipeline completed successfully!'
-            slackSend (
-                color: 'good',
-                message: "✅ SUCCESS: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)"
-            )
+            echo "📦 Docker Image: ${DOCKER_IMAGE}:${IMAGE_TAG}"
+            echo "📦 Artifact: target/SupplyChainX-0.0.1-SNAPSHOT.jar"
         }
         failure {
-            echo '❌ Pipeline failed!'
-            slackSend (
-                color: 'danger',
-                message: "❌ FAILED: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)"
-            )
+            echo '❌ Pipeline failed! Check the console output above.'
         }
         unstable {
             echo '⚠️ Pipeline is unstable!'
         }
-        cleanup {
-            echo '🧹 Cleaning workspace...'
-            cleanWs()
+        always {
+            echo '🧹 Build finished.'
         }
     }
 }
