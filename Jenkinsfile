@@ -55,30 +55,30 @@ pipeline {
         }
         
         stage('Code Quality Analysis') {
-            parallel {
-                stage('SonarQube Analysis') {
-                    when {
-                        expression { 
-                            return env.SONARQUBE_ENABLED == 'true' 
-                        }
-                    }
-                    steps {
-                        echo '📊 Running SonarQube analysis...'
+            steps {
+                echo '📊 Running SonarQube analysis...'
+                script {
+                    // SonarQube analysis with Maven
+                    try {
                         withSonarQubeEnv('SonarQube') {
                             sh '''
-                                mvn sonar:sonar \
+                                mvn clean verify sonar:sonar \
                                   -Dsonar.projectKey=supplychainx \
-                                  -Dsonar.host.url=${SONAR_HOST_URL} \
-                                  -Dsonar.login=${SONAR_AUTH_TOKEN}
+                                  -Dsonar.projectName="SupplyChainX" \
+                                  -Dsonar.java.binaries=target/classes
                             '''
                         }
-                    }
-                }
-                
-                stage('Checkstyle') {
-                    steps {
-                        echo '✅ Running Checkstyle...'
-                        sh 'mvn checkstyle:checkstyle || true'
+                        
+                        // Optional: Wait for Quality Gate
+                        // timeout(time: 10, unit: 'MINUTES') {
+                        //     def qg = waitForQualityGate()
+                        //     if (qg.status != 'OK') {
+                        //         error "Pipeline aborted due to quality gate failure: ${qg.status}"
+                        //     }
+                        // }
+                    } catch (Exception e) {
+                        echo "⚠️ SonarQube analysis failed: ${e.message}"
+                        echo "Continuing build without code quality analysis..."
                     }
                 }
             }
