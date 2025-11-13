@@ -63,6 +63,7 @@ pipeline {
                                 mvn clean verify sonar:sonar \
                                   -Dsonar.projectKey=supplychainx \
                                   -Dsonar.projectName="SupplyChainX" \
+                                  -Dsonar.host.url=http://supplychainx-sonarqube:9000 \
                                   -Dsonar.java.binaries=target/classes
                             '''
                         }
