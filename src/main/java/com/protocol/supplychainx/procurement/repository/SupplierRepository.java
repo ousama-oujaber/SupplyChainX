@@ -18,7 +18,26 @@ public interface SupplierRepository extends JpaRepository<Supplier, Long> {
     Optional<Supplier> findByName(String name);
     
     boolean existsByName(String name);
-    Page<Supplier> findByNameContainingIgnoreCase(String name, Pageable pageable);
+
+    @Query(
+        value = "SELECT s FROM Supplier s WHERE UPPER(s.name) LIKE UPPER(CONCAT('%', :pattern, '%')) ESCAPE '|'",
+        countQuery = "SELECT COUNT(s) FROM Supplier s WHERE UPPER(s.name) LIKE UPPER(CONCAT('%', :pattern, '%')) ESCAPE '|'"
+    )
+    Page<Supplier> findByNameContainingIgnoreCaseInternal(@Param("pattern") String pattern, Pageable pageable);
+
+    default Page<Supplier> findByNameContainingIgnoreCase(String name, Pageable pageable) {
+        return findByNameContainingIgnoreCaseInternal(escapeLikePattern(name), pageable);
+    }
+
+    private static String escapeLikePattern(String term) {
+        if (term == null || term.isEmpty()) {
+            return "";
+        }
+        return term
+                .replace("|", "||")
+                .replace("%", "|%")
+                .replace("_", "|_");
+    }
     @Query("SELECT COUNT(o) FROM SupplyOrder o WHERE o.supplier.idSupplier = :supplierId AND o.status IN :statuses")
     long countActiveOrdersBySupplier(@Param("supplierId") Long supplierId, 
                                      @Param("statuses") List<SupplyOrderStatus> statuses);

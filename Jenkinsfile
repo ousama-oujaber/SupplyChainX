@@ -2,11 +2,9 @@ pipeline {
     agent any
     
     environment {
-        // Docker configuration (credentials only needed if Docker stages are enabled)
         DOCKER_IMAGE = 'your-dockerhub-username/supplychainx'
         IMAGE_TAG = "${BUILD_NUMBER}"
         
-        // MySQL credentials for testing
         MYSQL_ROOT_PASSWORD = 'root'
         MYSQL_DATABASE = 'supplychainx_test'
         MYSQL_USER = 'scx_user'
@@ -69,13 +67,13 @@ pipeline {
                             '''
                         }
                         
-                        // Optional: Wait for Quality Gate
-                        // timeout(time: 10, unit: 'MINUTES') {
-                        //     def qg = waitForQualityGate()
-                        //     if (qg.status != 'OK') {
-                        //         error "Pipeline aborted due to quality gate failure: ${qg.status}"
-                        //     }
-                        // }
+                        //Optional: Wait for Quality Gate
+                        //timeout(time: 10, unit: 'MINUTES') {
+                        //    def qg = waitForQualityGate()
+                        //    if (qg.status != 'OK') {
+                        //        error "Pipeline aborted due to quality gate failure: ${qg.status}"
+                        //    }
+                        //}
                     } catch (Exception e) {
                         echo "⚠️ SonarQube analysis failed: ${e.message}"
                         echo "Continuing build without code quality analysis..."
