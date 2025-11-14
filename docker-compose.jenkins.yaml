@@ -16,11 +16,20 @@ services:
     dns:
       - 8.8.8.8
       - 8.8.4.4
+      - 1.1.1.1
+    dns_search:
+      - maven.apache.org
+    environment:
+      - JAVA_OPTS=-Djava.net.preferIPv4Stack=true
     volumes:
       - jenkins_home:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./.mvn/settings.xml:/var/jenkins_home/.m2/settings.xml:ro
     networks:
       - scx-network
+    extra_hosts:
+      - "repo.maven.apache.org:151.101.1.209"
+      - "repo.maven.apache.org:151.101.65.209"
 
 volumes:
   jenkins_home:
@@ -29,3 +38,7 @@ volumes:
 networks:
   scx-network:
     driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: scx-bridge
+      com.docker.network.driver.mtu: 1500
+

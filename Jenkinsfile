@@ -9,6 +9,9 @@ pipeline {
         MYSQL_DATABASE = 'supplychainx_test'
         MYSQL_USER = 'scx_user'
         MYSQL_PASSWORD = 'scx_pass'
+        
+        // Maven options for better network resilience
+        MAVEN_OPTS = '-Dmaven.wagon.http.retryHandler.count=3 -Dmaven.wagon.httpconnectionManager.ttlSeconds=120'
     }
     
     tools {
@@ -17,6 +20,27 @@ pipeline {
     }
     
     stages {
+        stage('Environment Check') {
+            steps {
+                echo '🔍 Checking network connectivity and DNS resolution...'
+                script {
+                    sh '''
+                        echo "=== DNS Configuration ==="
+                        cat /etc/resolv.conf || echo "Cannot read resolv.conf"
+                        
+                        echo "\n=== Testing DNS Resolution ==="
+                        nslookup repo.maven.apache.org || echo "⚠️ DNS resolution failed for Maven Central"
+                        
+                        echo "\n=== Testing Network Connectivity ==="
+                        ping -c 3 8.8.8.8 || echo "⚠️ Cannot reach Google DNS"
+                        
+                        echo "\n=== Testing Maven Repository Access ==="
+                        curl -I https://repo.maven.apache.org/maven2/ --connect-timeout 10 || echo "⚠️ Cannot connect to Maven Central"
+                    '''
+                }
+            }
+        }
+        
         stage('Checkout') {
             steps {
                 echo '📦 Checking out code from GitHub...'
@@ -27,18 +51,31 @@ pipeline {
         stage('Build') {
             steps {
                 echo '🔨 Building application with Maven...'
-                sh '''
-                    mvn clean compile -DskipTests
-                '''
+                script {
+                    retry(3) {
+                        sh '''
+                            mvn clean compile -DskipTests \
+                                -Dmaven.wagon.http.retryHandler.count=3 \
+                                -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 \
+                                -Dhttp.keepAlive=false
+                        '''
+                    }
+                }
             }
         }
         
         stage('Test') {
             steps {
                 echo '🧪 Running unit tests...'
-                sh '''
-                    mvn test
-                '''
+                script {
+                    retry(2) {
+                        sh '''
+                            mvn test \
+                                -Dmaven.wagon.http.retryHandler.count=3 \
+                                -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+                        '''
+                    }
+                }
             }
             post {
                 always {
@@ -86,9 +123,16 @@ pipeline {
         stage('Package') {
             steps {
                 echo '📦 Packaging application...'
-                sh '''
-                    mvn package -DskipTests
-                '''
+                script {
+                    retry(3) {
+                        sh '''
+                            mvn package -DskipTests \
+                                -Dmaven.wagon.http.retryHandler.count=3 \
+                                -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 \
+                                -Dhttp.keepAlive=false
+                        '''
+                    }
+                }
             }
             post {
                 success {
