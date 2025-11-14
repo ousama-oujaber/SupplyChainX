@@ -2,7 +2,7 @@ pipeline {
     agent any
     
     environment {
-        DOCKER_IMAGE = 'your-dockerhub-username/supplychainx'
+        DOCKER_IMAGE = 'protocol404/supplychainx'
         IMAGE_TAG = "${BUILD_NUMBER}"
         
         MYSQL_ROOT_PASSWORD = 'root'
@@ -97,8 +97,6 @@ pipeline {
             }
         }
         
-        // Docker stages commented out - uncomment after adding dockerhub-credentials
-        /*
         stage('Build Docker Image') {
             steps {
                 echo '🐳 Building Docker image...'
@@ -118,98 +116,6 @@ pipeline {
                         dockerImage.push("latest")
                     }
                 }
-            }
-        }
-        */
-        
-        // Security Scan - requires Docker image to be built
-        /*
-        stage('Security Scan') {
-            steps {
-                echo '🔒 Scanning Docker image for vulnerabilities...'
-                sh '''
-                    docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-                        aquasec/trivy:latest image --severity HIGH,CRITICAL \
-                        ${DOCKER_IMAGE}:${IMAGE_TAG} || true
-                '''
-            }
-        }
-        */
-        
-        stage('Deploy to Development') {
-            when {
-                branch 'develop'
-            }
-            steps {
-                echo '🚀 Deploying to Development environment...'
-                sh '''
-                    docker-compose -f compose.yaml down || true
-                    docker-compose -f compose.yaml up -d
-                '''
-            }
-        }
-        
-        stage('Deploy to Staging') {
-            when {
-                branch 'staging'
-            }
-            steps {
-                echo '🚀 Deploying to Staging environment...'
-                input message: 'Deploy to Staging?', ok: 'Deploy'
-                sh '''
-                    docker-compose -f compose.staging.yaml down || true
-                    docker-compose -f compose.staging.yaml up -d
-                '''
-            }
-        }
-        
-        stage('Deploy to Production') {
-            when {
-                branch 'main'
-            }
-            steps {
-                echo '🚀 Deploying to Production environment...'
-                input message: 'Deploy to Production?', ok: 'Deploy'
-                sh '''
-                    # Pull latest images
-                    docker pull ${DOCKER_IMAGE}:${IMAGE_TAG}
-                    
-                    # Deploy with zero downtime
-                    docker-compose -f compose.yaml up -d --no-deps --build app
-                    
-                    # Health check
-                    sleep 30
-                    curl -f http://localhost:8080/actuator/health || exit 1
-                '''
-            }
-        }
-        
-        stage('Integration Tests') {
-            when {
-                anyOf {
-                    branch 'main'
-                    branch 'develop'
-                }
-            }
-            steps {
-                echo '🧪 Running integration tests...'
-                sh '''
-                    # Wait for application to be ready
-                    sleep 30
-                    
-                    # Run integration tests
-                    mvn verify -Pintegration-tests || true
-                '''
-            }
-        }
-        
-        stage('Cleanup') {
-            steps {
-                echo '🧹 Cleaning up...'
-                sh '''
-                    docker system prune -f
-                    docker image prune -f
-                '''
             }
         }
     }

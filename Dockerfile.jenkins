@@ -1,0 +1,11 @@
+FROM jenkins/jenkins:lts
+
+USER root
+
+# Installs Docker, Docker Compose, adds jenkins user to the docker group, and cleans up apt cache
+RUN apt-get update && \
+    apt-get install -y docker.io docker-compose && \
+    usermod -aG docker jenkins && \
+    rm -rf /var/lib/apt/lists/*
+
+USER jenkins
