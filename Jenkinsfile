@@ -161,7 +161,7 @@ pipeline {
             when {
                 branch 'master'
             }
-            steps:
+            steps {
                 echo '🔍 Running smoke tests on production...'
                 script {
                     sh '''
