@@ -37,6 +37,13 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_JPA_SHOW_SQL: false
       SERVER_PORT: 8080
+      # Mail Configuration (disabled for production - using fake SMTP)
+      SPRING_MAIL_HOST: smtp.mailtrap.io
+      SPRING_MAIL_PORT: 2525
+      SPRING_MAIL_USERNAME: fake
+      SPRING_MAIL_PASSWORD: fake
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: false
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: false
     ports:
       - "8080:8080"
     networks:
