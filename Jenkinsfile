@@ -9,6 +9,14 @@ pipeline {
         MYSQL_DATABASE = 'supplychainx_test'
         MYSQL_USER = 'scx_user'
         MYSQL_PASSWORD = 'scx_pass'
+        
+        // Production Droplet Configuration
+        DROPLET_IP = '64.226.103.218'
+        DROPLET_USER = 'root'
+        DEPLOY_DIR = '/opt/supplychainx'
+        
+        // Maven options for better network resilience
+        MAVEN_OPTS = '-Dmaven.wagon.http.retryHandler.count=3 -Dmaven.wagon.httpconnectionManager.ttlSeconds=120'
     }
     
     tools {
@@ -115,6 +123,68 @@ pipeline {
                         dockerImage.push("${IMAGE_TAG}")
                         dockerImage.push("latest")
                     }
+                }
+            }
+        }
+        
+        stage('Deploy to Production') {
+            when {
+                branch 'master'
+            }
+            steps {
+                echo '🚀 Deploying to DigitalOcean Droplet...'
+                script {
+                    withCredentials([sshUserPrivateKey(credentialsId: 'droplet-ssh-key', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
+                        sh '''
+                            # Make deployment script executable
+                            chmod +x deploy-to-droplet.sh
+                            
+                            # Setup SSH
+                            mkdir -p ~/.ssh
+                            cp $SSH_KEY ~/.ssh/id_rsa
+                            chmod 600 ~/.ssh/id_rsa
+                            
+                            # Set environment variables for deployment
+                            export DROPLET_IP="${DROPLET_IP}"
+                            export DROPLET_USER="${DROPLET_USER}"
+                            export DOCKER_IMAGE="${DOCKER_IMAGE}:${IMAGE_TAG}"
+                            
+                            # Run deployment script
+                            ./deploy-to-droplet.sh
+                        '''
+                    }
+                }
+            }
+        }
+        
+        stage('Smoke Test') {
+            when {
+                branch 'master'
+            }
+            steps:
+                echo '🔍 Running smoke tests on production...'
+                script {
+                    sh '''
+                        # Wait for application to be fully ready
+                        echo "Waiting for application to respond..."
+                        for i in {1..30}; do
+                            if curl -f http://${DROPLET_IP}:8080/actuator/health; then
+                                echo "✓ Application is responding!"
+                                break
+                            fi
+                            echo "Waiting... ($i/30)"
+                            sleep 5
+                        done
+                        
+                        # Basic health check
+                        HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://${DROPLET_IP}:8080/actuator/health)
+                        if [ $HTTP_STATUS -eq 200 ]; then
+                            echo "✓ Health check passed (HTTP $HTTP_STATUS)"
+                        else
+                            echo "✗ Health check failed (HTTP $HTTP_STATUS)"
+                            exit 1
+                        fi
+                    '''
                 }
             }
         }
