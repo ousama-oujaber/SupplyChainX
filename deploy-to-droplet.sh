@@ -151,6 +151,13 @@ echo -e "${YELLOW}Step 10: Verifying deployment...${NC}"
 remote_exec "
     cd ${DEPLOY_DIR}
     docker-compose ps
+    
+    # Wait for containers to be in healthy/running state
+    echo 'Waiting for containers to stabilize...'
+    sleep 10
+    
+    # Check container status
+    docker-compose ps
 "
 echo ""
 
@@ -160,6 +167,7 @@ echo -e "${BLUE}╚════════════════════�
 echo ""
 echo -e "${GREEN}Application URL: http://${DROPLET_IP}:8080${NC}"
 echo -e "${GREEN}Health Check: http://${DROPLET_IP}:8080/actuator/health${NC}"
+echo -e "${YELLOW}Note: Application may take 30-60 seconds to fully initialize${NC}"
 echo ""
 echo "To view logs:"
 echo "  ssh ${DROPLET_USER}@${DROPLET_IP} 'cd ${DEPLOY_DIR} && docker-compose logs -f'"

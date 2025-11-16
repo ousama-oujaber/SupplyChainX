@@ -159,25 +159,44 @@ pipeline {
                 echo "🔍 Running smoke tests on production..."
                 script {
                     sh '''
-                        # Wait for application to be fully ready
-                        echo "Waiting for application to respond..."
-                        for i in {1..30}; do
-                            if curl -f http://${DROPLET_IP}:8080/actuator/health; then
+                        # Give Spring Boot application time to initialize
+                        echo "⏳ Waiting 30 seconds for Spring Boot to initialize..."
+                        sleep 30
+                        
+                        # Wait for application to be fully ready (up to 5 minutes)
+                        echo "🔍 Checking application health..."
+                        MAX_ATTEMPTS=60
+                        ATTEMPT=0
+                        
+                        while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+                            ATTEMPT=$((ATTEMPT + 1))
+                            echo "Attempt $ATTEMPT/$MAX_ATTEMPTS..."
+                            
+                            # Try to connect with timeout
+                            if curl -f --max-time 10 --connect-timeout 5 http://${DROPLET_IP}:8080/actuator/health 2>/dev/null; then
                                 echo "✓ Application is responding!"
-                                break
+                                
+                                # Verify health status
+                                HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://${DROPLET_IP}:8080/actuator/health)
+                                if [ $HTTP_STATUS -eq 200 ]; then
+                                    echo "✅ Health check passed (HTTP $HTTP_STATUS)"
+                                    echo "🎉 Application successfully deployed and healthy!"
+                                    exit 0
+                                else
+                                    echo "⚠️ Got HTTP $HTTP_STATUS, retrying..."
+                                fi
+                            else
+                                echo "⏳ Application not ready yet, waiting..."
                             fi
-                            echo "Waiting... ($i/30)"
+                            
                             sleep 5
                         done
                         
-                        # Basic health check
-                        HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://${DROPLET_IP}:8080/actuator/health)
-                        if [ $HTTP_STATUS -eq 200 ]; then
-                            echo "✓ Health check passed (HTTP $HTTP_STATUS)"
-                        else
-                            echo "✗ Health check failed (HTTP $HTTP_STATUS)"
-                            exit 1
-                        fi
+                        # Final verification
+                        echo "❌ Application failed to become healthy within 5 minutes"
+                        echo "Last health check response:"
+                        curl -v http://${DROPLET_IP}:8080/actuator/health || true
+                        exit 1
                     '''
                 }
             }
