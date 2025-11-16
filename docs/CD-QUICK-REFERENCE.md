@@ -30,7 +30,7 @@ ssh-keygen -t rsa -b 4096 -C "jenkins@supplychainx" -f ~/.ssh/supplychainx_dropl
 
 ```bash
 ssh-copy-id -i ~/.ssh/supplychainx_droplet_key.pub root@64.226.103.218
-# Password: your password
+# Password: password
 ```
 
 ### Step 3: Test Connection
