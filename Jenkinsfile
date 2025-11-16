@@ -129,10 +129,15 @@ pipeline {
         
         stage('Deploy to Production') {
             when {
-                branch 'master'
+                anyOf {
+                    branch 'master'
+                    branch 'origin/master'
+                }
             }
             steps {
-                echo '🚀 Deploying to DigitalOcean Droplet...'
+                echo "🚀 Deploying to DigitalOcean Droplet..."
+                echo "Current branch: ${env.BRANCH_NAME}"
+                echo "Git branch: ${env.GIT_BRANCH}"
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'droplet-ssh-key', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
                         sh '''
@@ -159,10 +164,14 @@ pipeline {
         
         stage('Smoke Test') {
             when {
-                branch 'master'
+                anyOf {
+                    branch 'master'
+                    branch 'origin/master'
+                }
             }
             steps {
-                echo '🔍 Running smoke tests on production...'
+                echo "🔍 Running smoke tests on production..."
+                echo "Current branch: ${env.BRANCH_NAME}"
                 script {
                     sh '''
                         # Wait for application to be fully ready
