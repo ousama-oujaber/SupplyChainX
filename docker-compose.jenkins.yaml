@@ -28,4 +28,5 @@ volumes:
 
 networks:
   scx-network:
+    name: scx-network
     driver: bridge

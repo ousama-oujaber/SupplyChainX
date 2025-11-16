@@ -51,4 +51,5 @@ volumes:
 
 networks:
   scx-network:
+    name: scx-network
     external: true
