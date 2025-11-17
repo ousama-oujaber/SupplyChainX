@@ -9,7 +9,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class SupplyChainXApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(SupplyChainXApplication.class, args);
+//        SpringApplication.run(SupplyChainXApplication.class, args);
+        SpringApplication app = new SpringApplication(SupplyChainXApplication.class);
+        app.setAdditionalProfiles("test");
+        app.run(args);
     }
-
 }
