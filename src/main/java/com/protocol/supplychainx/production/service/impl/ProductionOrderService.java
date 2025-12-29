@@ -5,6 +5,8 @@ import com.protocol.supplychainx.common.exceptions.production.InsufficientMateri
 import com.protocol.supplychainx.common.exceptions.production.ProductNotFoundException;
 import com.protocol.supplychainx.common.exceptions.production.ProductionOrderCannotBeCancelledException;
 import com.protocol.supplychainx.common.exceptions.production.ProductionOrderNotFoundException;
+import com.protocol.supplychainx.common.logging.LogContext;
+import com.protocol.supplychainx.common.logging.LogType;
 import com.protocol.supplychainx.production.dto.ProductionOrderDTO;
 import com.protocol.supplychainx.production.entity.BillOfMaterial;
 import com.protocol.supplychainx.production.entity.Product;
@@ -71,6 +73,8 @@ public class ProductionOrderService implements IProductionOrderService {
 
     @Override
     public ProductionOrderDTO updateProductionOrder(Long id, ProductionOrderDTO productionOrderDTO) {
+        LogContext.setLogType(LogType.BUSINESS);
+        LogContext.setBusinessId("PO-" + id);
         log.info("Updating production order with ID: {}", id);
 
         ProductionOrder existingOrder = productionOrderRepository.findById(id)

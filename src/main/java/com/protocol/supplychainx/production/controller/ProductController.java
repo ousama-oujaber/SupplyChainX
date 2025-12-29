@@ -1,7 +1,5 @@
 package com.protocol.supplychainx.production.controller;
 
-import com.protocol.supplychainx.common.enums.RoleUtilisateur;
-import com.protocol.supplychainx.config.aop.SecuredEndpoint;
 import com.protocol.supplychainx.production.dto.ProductDTO;
 import com.protocol.supplychainx.production.service.IProductService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,6 +13,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -26,7 +25,7 @@ public class ProductController {
     private final IProductService productService;
 
     @PostMapping
-    @SecuredEndpoint(allowedRoles = {RoleUtilisateur.ADMIN, RoleUtilisateur.CHEF_PRODUCTION})
+    @PreAuthorize("hasAnyRole('ADMIN', 'CHEF_PRODUCTION')")
     @Operation(summary = "Create a new product", description = "Add a new product to the production system")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Product created successfully"),
@@ -39,7 +38,7 @@ public class ProductController {
     }
 
     @PutMapping("/{id}")
-    @SecuredEndpoint(allowedRoles = {RoleUtilisateur.ADMIN, RoleUtilisateur.CHEF_PRODUCTION})
+    @PreAuthorize("hasAnyRole('ADMIN', 'CHEF_PRODUCTION')")
     @Operation(summary = "Update a product", description = "Update an existing product by ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Product updated successfully"),
@@ -54,7 +53,7 @@ public class ProductController {
     }
 
     @GetMapping("/{id}")
-    @SecuredEndpoint(allowedRoles = {RoleUtilisateur.ADMIN, RoleUtilisateur.CHEF_PRODUCTION, RoleUtilisateur.SUPERVISEUR_PRODUCTION, RoleUtilisateur.PLANIFICATEUR})
+    @PreAuthorize("hasAnyRole('ADMIN', 'CHEF_PRODUCTION', 'SUPERVISEUR_PRODUCTION', 'PLANIFICATEUR')")
     @Operation(summary = "Get product by ID", description = "Retrieve a product by its ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Product found"),
