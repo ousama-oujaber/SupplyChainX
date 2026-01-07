@@ -11,6 +11,7 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./schema/keycloak-init.sql:/docker-entrypoint-initdb.d/keycloak-init.sql
     networks:
       - scx-network
     healthcheck:
@@ -94,10 +95,28 @@ services:
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: mysql
+      KC_DB_URL: jdbc:mysql://mysql:3306/keycloak?allowPublicKeyRetrieval=true&useSSL=false
+      KC_DB_USERNAME: scx_user
+      KC_DB_PASSWORD: scx_pass
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8090
+      KC_HOSTNAME_STRICT: false
+      KC_HTTP_ENABLED: true
+      KC_HEALTH_ENABLED: true
     ports:
       - "8090:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
     networks:
       - scx-network
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080;echo -e 'GET /health/ready HTTP/1.1\r\nhost: 127.0.0.1\r\nConnection: close\r\n\r\n' >&3;if [ $? -eq 0 ]; then echo 'Healthcheck Successful';exit 0;else echo 'Healthcheck Failed';exit 1;fi;"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
 
   app:
     build:

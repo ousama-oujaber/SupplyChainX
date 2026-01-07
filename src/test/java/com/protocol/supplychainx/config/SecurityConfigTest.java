@@ -5,6 +5,7 @@ import com.protocol.supplychainx.production.controller.ProductController;
 import com.protocol.supplychainx.production.service.IProductService;
 import com.protocol.supplychainx.user.entity.User;
 import com.protocol.supplychainx.user.repository.UserRepository;
+import org.apache.catalina.security.SecurityConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
