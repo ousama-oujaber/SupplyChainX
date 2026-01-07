@@ -98,6 +98,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/supplychainx?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: scx_user
       SPRING_DATASOURCE_PASSWORD: scx_pass
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
       SPRING_LIQUIBASE_URL: jdbc:mysql://mysql:3306/supplychainx?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_LIQUIBASE_USER: scx_user
       SPRING_LIQUIBASE_PASSWORD: scx_pass
