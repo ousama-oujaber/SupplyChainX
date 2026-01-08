@@ -5,8 +5,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "supply_orders")
@@ -26,14 +26,9 @@ public class SupplyOrder {
     @JoinColumn(name = "supplier_id", nullable = false)
     private Supplier supplier;
 
-    @ManyToMany
-    @JoinTable(
-            name = "supply_order_materials",
-            joinColumns = @JoinColumn(name = "order_id"),
-            inverseJoinColumns = @JoinColumn(name = "material_id")
-    )
+    @OneToMany(mappedBy = "supplyOrder", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private Set<RawMaterial> materials = new HashSet<>();
+    private List<SupplyOrderItem> items = new ArrayList<>();
 
     @Column(nullable = false)
     private LocalDate orderDate;
