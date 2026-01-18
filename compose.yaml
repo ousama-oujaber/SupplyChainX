@@ -7,14 +7,11 @@ services:
       MYSQL_DATABASE: supplychainx
       MYSQL_USER: scx_user
       MYSQL_PASSWORD: scx_pass
-    ports:
-      - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-    networks:
-      - scx-network
+    network_mode: host
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "scx_user", "-p$$MYSQL_PASSWORD"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "scx_user", "-p$$MYSQL_PASSWORD" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -23,39 +20,78 @@ services:
     image: phpmyadmin/phpmyadmin:latest
     container_name: supplychainx-phpmyadmin
     environment:
-      PMA_HOST: mysql
+      PMA_HOST: 127.0.0.1
       PMA_USER: scx_user
       PMA_PASSWORD: scx_pass
-    ports:
-      - "8081:80"
     depends_on:
       - mysql
-    networks:
-      - scx-network
+    network_mode: host
+
+  # Keycloak PostgreSQL Database (excluded from Spring auto-config)
+  keycloak-db:
+    image: postgres:15
+    container_name: supplychainx-keycloak-db
+    labels:
+      org.springframework.boot.ignore: "true"
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+    volumes:
+      - keycloak_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U keycloak" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Keycloak Identity Provider
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: supplychainx-keycloak
+    labels:
+      org.springframework.boot.ignore: "true"
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8090
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    command: start-dev --import-realm
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import
+    ports:
+      - "8090:8080"
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
 
   app:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: supplychainx-app
-    ports:
-      - "8080:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/supplychainx?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/supplychainx?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: scx_user
       SPRING_DATASOURCE_PASSWORD: scx_pass
-      SPRING_LIQUIBASE_URL: jdbc:mysql://mysql:3306/supplychainx?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_LIQUIBASE_URL: jdbc:mysql://127.0.0.1:3306/supplychainx?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_LIQUIBASE_USER: scx_user
       SPRING_LIQUIBASE_PASSWORD: scx_pass
     depends_on:
       mysql:
         condition: service_healthy
-    networks:
-      - scx-network
+    network_mode: host
 
 volumes:
   mysql_data:
+  keycloak_postgres_data:
 
-networks:
-  scx-network:
-    driver: bridge
+

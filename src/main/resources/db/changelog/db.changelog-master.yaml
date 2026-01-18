@@ -11,3 +11,9 @@ databaseChangeLog:
       file: db/changelog/05-fix-products-table-schema.yaml
   - include:
       file: db/changelog/08-insert-test-users.yaml
+  - include:
+      file: db/changelog/09-refactor-material-suppliers-pivot.yaml
+  - include:
+      file: db/changelog/10-add-price-to-supply-order-items.yaml
+
+

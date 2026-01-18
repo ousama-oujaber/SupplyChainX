@@ -1,0 +1,299 @@
+{
+    "realm": "supplychainx",
+    "enabled": true,
+    "sslRequired": "none",
+    "registrationAllowed": false,
+    "loginWithEmailAllowed": true,
+    "duplicateEmailsAllowed": false,
+    "resetPasswordAllowed": true,
+    "editUsernameAllowed": false,
+    "bruteForceProtected": true,
+    "roles": {
+        "realm": [
+            {
+                "name": "ADMIN",
+                "description": "Full system access - can do anything"
+            },
+            {
+                "name": "GESTIONNAIRE_APPROVISIONNEMENT",
+                "description": "Procurement manager - manages raw materials and supply orders"
+            },
+            {
+                "name": "RESPONSABLE_ACHATS",
+                "description": "Purchasing manager - full access to procurement module"
+            },
+            {
+                "name": "SUPERVISEUR_LOGISTIQUE",
+                "description": "Logistics supervisor - read access to procurement and delivery"
+            },
+            {
+                "name": "CHEF_PRODUCTION",
+                "description": "Production manager - full access to production module"
+            },
+            {
+                "name": "PLANIFICATEUR",
+                "description": "Production planner - manages production orders and schedules"
+            },
+            {
+                "name": "SUPERVISEUR_PRODUCTION",
+                "description": "Production supervisor - manages production floor operations"
+            },
+            {
+                "name": "GESTIONNAIRE_COMMERCIAL",
+                "description": "Sales manager - manages customer orders"
+            },
+            {
+                "name": "RESPONSABLE_LOGISTIQUE",
+                "description": "Logistics manager - full access to delivery module"
+            },
+            {
+                "name": "SUPERVISEUR_LIVRAISONS",
+                "description": "Delivery supervisor - manages deliveries and drivers"
+            }
+        ]
+    },
+    "clients": [
+        {
+            "clientId": "supplychainx-api",
+            "name": "SupplyChainX API",
+            "description": "Backend API client",
+            "enabled": true,
+            "publicClient": true,
+            "directAccessGrantsEnabled": true,
+            "standardFlowEnabled": true,
+            "implicitFlowEnabled": false,
+            "serviceAccountsEnabled": false,
+            "authorizationServicesEnabled": false,
+            "redirectUris": [
+                "http://localhost:4200/*",
+                "https://localhost:4200/*"
+            ],
+            "webOrigins": [
+                "http://localhost:4200",
+                "https://localhost:4200"
+            ],
+            "protocol": "openid-connect",
+            "attributes": {
+                "access.token.lifespan": "3600",
+                "pkce.code.challenge.method": "S256"
+            },
+            "protocolMappers": [
+                {
+                    "name": "realm-roles-mapper",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-usermodel-realm-role-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "multivalued": "true",
+                        "userinfo.token.claim": "true",
+                        "id.token.claim": "true",
+                        "access.token.claim": "true",
+                        "claim.name": "roles",
+                        "jsonType.label": "String"
+                    }
+                }
+            ]
+        },
+        {
+            "clientId": "supplychainx-frontend",
+            "name": "SupplyChainX Angular Frontend",
+            "description": "Frontend Angular SPA client",
+            "enabled": true,
+            "publicClient": true,
+            "directAccessGrantsEnabled": true,
+            "standardFlowEnabled": true,
+            "implicitFlowEnabled": false,
+            "redirectUris": [
+                "http://localhost:4200/*",
+                "https://localhost:4200/*"
+            ],
+            "webOrigins": [
+                "http://localhost:4200",
+                "https://localhost:4200"
+            ],
+            "protocol": "openid-connect"
+        }
+    ],
+    "users": [
+        {
+            "username": "admin",
+            "email": "admin@supplychainx.com",
+            "firstName": "System",
+            "lastName": "Administrator",
+            "enabled": true,
+            "emailVerified": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "admin123",
+                    "temporary": false
+                }
+            ],
+            "realmRoles": [
+                "ADMIN"
+            ]
+        },
+        {
+            "username": "procurement.manager",
+            "email": "procurement@supplychainx.com",
+            "firstName": "Pierre",
+            "lastName": "Dupont",
+            "enabled": true,
+            "emailVerified": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "test123",
+                    "temporary": false
+                }
+            ],
+            "realmRoles": [
+                "GESTIONNAIRE_APPROVISIONNEMENT"
+            ]
+        },
+        {
+            "username": "purchasing.manager",
+            "email": "purchasing@supplychainx.com",
+            "firstName": "Marie",
+            "lastName": "Martin",
+            "enabled": true,
+            "emailVerified": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "test123",
+                    "temporary": false
+                }
+            ],
+            "realmRoles": [
+                "RESPONSABLE_ACHATS"
+            ]
+        },
+        {
+            "username": "logistics.supervisor",
+            "email": "logistics.sup@supplychainx.com",
+            "firstName": "Jean",
+            "lastName": "Leclerc",
+            "enabled": true,
+            "emailVerified": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "test123",
+                    "temporary": false
+                }
+            ],
+            "realmRoles": [
+                "SUPERVISEUR_LOGISTIQUE"
+            ]
+        },
+        {
+            "username": "production.manager",
+            "email": "production@supplychainx.com",
+            "firstName": "Sophie",
+            "lastName": "Bernard",
+            "enabled": true,
+            "emailVerified": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "test123",
+                    "temporary": false
+                }
+            ],
+            "realmRoles": [
+                "CHEF_PRODUCTION"
+            ]
+        },
+        {
+            "username": "planner",
+            "email": "planner@supplychainx.com",
+            "firstName": "Luc",
+            "lastName": "Moreau",
+            "enabled": true,
+            "emailVerified": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "test123",
+                    "temporary": false
+                }
+            ],
+            "realmRoles": [
+                "PLANIFICATEUR"
+            ]
+        },
+        {
+            "username": "production.supervisor",
+            "email": "prod.sup@supplychainx.com",
+            "firstName": "Claire",
+            "lastName": "Petit",
+            "enabled": true,
+            "emailVerified": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "test123",
+                    "temporary": false
+                }
+            ],
+            "realmRoles": [
+                "SUPERVISEUR_PRODUCTION"
+            ]
+        },
+        {
+            "username": "sales.manager",
+            "email": "sales@supplychainx.com",
+            "firstName": "Thomas",
+            "lastName": "Roux",
+            "enabled": true,
+            "emailVerified": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "test123",
+                    "temporary": false
+                }
+            ],
+            "realmRoles": [
+                "GESTIONNAIRE_COMMERCIAL"
+            ]
+        },
+        {
+            "username": "logistics.manager",
+            "email": "logistics@supplychainx.com",
+            "firstName": "Anne",
+            "lastName": "Blanc",
+            "enabled": true,
+            "emailVerified": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "test123",
+                    "temporary": false
+                }
+            ],
+            "realmRoles": [
+                "RESPONSABLE_LOGISTIQUE"
+            ]
+        },
+        {
+            "username": "delivery.supervisor",
+            "email": "delivery@supplychainx.com",
+            "firstName": "Michel",
+            "lastName": "Girard",
+            "enabled": true,
+            "emailVerified": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "test123",
+                    "temporary": false
+                }
+            ],
+            "realmRoles": [
+                "SUPERVISEUR_LIVRAISONS"
+            ]
+        }
+    ]
+}

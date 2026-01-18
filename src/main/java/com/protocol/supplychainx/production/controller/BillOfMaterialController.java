@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -20,6 +21,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/production/bom")
 @RequiredArgsConstructor
+@PermitAll
 @Tag(name = "Bill of Materials", description = "Bill of Materials management APIs")
 public class BillOfMaterialController {
 

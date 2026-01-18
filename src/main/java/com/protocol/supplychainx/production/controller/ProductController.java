@@ -1,13 +1,14 @@
 package com.protocol.supplychainx.production.controller;
 
 import com.protocol.supplychainx.common.enums.RoleUtilisateur;
-import com.protocol.supplychainx.config.aop.SecuredEndpoint;
+//import com.protocol.supplychainx.config.aop.SecuredEndpoint;
 import com.protocol.supplychainx.production.dto.ProductDTO;
 import com.protocol.supplychainx.production.service.IProductService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -26,7 +27,7 @@ public class ProductController {
     private final IProductService productService;
 
     @PostMapping
-    @SecuredEndpoint(allowedRoles = {RoleUtilisateur.ADMIN, RoleUtilisateur.CHEF_PRODUCTION})
+//    @SecuredEndpoint(allowedRoles = {RoleUtilisateur.ADMIN, RoleUtilisateur.CHEF_PRODUCTION})
     @Operation(summary = "Create a new product", description = "Add a new product to the production system")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Product created successfully"),
@@ -39,7 +40,7 @@ public class ProductController {
     }
 
     @PutMapping("/{id}")
-    @SecuredEndpoint(allowedRoles = {RoleUtilisateur.ADMIN, RoleUtilisateur.CHEF_PRODUCTION})
+//    @SecuredEndpoint(allowedRoles = {RoleUtilisateur.ADMIN, RoleUtilisateur.CHEF_PRODUCTION})
     @Operation(summary = "Update a product", description = "Update an existing product by ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Product updated successfully"),
@@ -54,7 +55,7 @@ public class ProductController {
     }
 
     @GetMapping("/{id}")
-    @SecuredEndpoint(allowedRoles = {RoleUtilisateur.ADMIN, RoleUtilisateur.CHEF_PRODUCTION, RoleUtilisateur.SUPERVISEUR_PRODUCTION, RoleUtilisateur.PLANIFICATEUR})
+//    @SecuredEndpoint(allowedRoles = {RoleUtilisateur.ADMIN, RoleUtilisateur.CHEF_PRODUCTION, RoleUtilisateur.SUPERVISEUR_PRODUCTION, RoleUtilisateur.PLANIFICATEUR})
     @Operation(summary = "Get product by ID", description = "Retrieve a product by its ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Product found"),

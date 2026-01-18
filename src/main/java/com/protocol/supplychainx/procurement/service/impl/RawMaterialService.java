@@ -3,10 +3,15 @@ package com.protocol.supplychainx.procurement.service.impl;
 import com.protocol.supplychainx.common.exceptions.procurement.RawMaterialNotFoundException;
 import com.protocol.supplychainx.common.exceptions.procurement.SupplierNotFoundException;
 import com.protocol.supplychainx.procurement.dto.RawMaterialDTO;
+import com.protocol.supplychainx.procurement.dto.SupplierMaterialDTO;
 import com.protocol.supplychainx.procurement.entity.RawMaterial;
 import com.protocol.supplychainx.procurement.entity.Supplier;
+import com.protocol.supplychainx.procurement.entity.SupplierMaterial;
+import com.protocol.supplychainx.procurement.entity.SupplierMaterialId;
 import com.protocol.supplychainx.procurement.mapper.RawMaterialMapper;
+import com.protocol.supplychainx.procurement.mapper.SupplierMaterialMapper;
 import com.protocol.supplychainx.procurement.repository.RawMaterialRepository;
+import com.protocol.supplychainx.procurement.repository.SupplierMaterialRepository;
 import com.protocol.supplychainx.procurement.repository.SupplierRepository;
 import com.protocol.supplychainx.procurement.service.IRawMaterialService;
 import jakarta.transaction.Transactional;
@@ -16,9 +21,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,27 +32,18 @@ public class RawMaterialService implements IRawMaterialService {
 
     private final RawMaterialRepository rawMaterialRepository;
     private final SupplierRepository supplierRepository;
+    private final SupplierMaterialRepository supplierMaterialRepository;
     private final RawMaterialMapper rawMaterialMapper;
+    private final SupplierMaterialMapper supplierMaterialMapper;
 
     @Override
     public RawMaterialDTO createRawMaterial(RawMaterialDTO rawMaterialDTO) {
         log.info("Creating new raw material: {}", rawMaterialDTO.getName());
 
         RawMaterial rawMaterial = rawMaterialMapper.toEntity(rawMaterialDTO);
-
-        if (rawMaterialDTO.getSupplierIds() != null && !rawMaterialDTO.getSupplierIds().isEmpty()) {
-            Set<Supplier> suppliers = new HashSet<>();
-            for (Long supplierId : rawMaterialDTO.getSupplierIds()) {
-                Supplier supplier = supplierRepository.findById(supplierId)
-                        .orElseThrow(() -> new SupplierNotFoundException(supplierId));
-                suppliers.add(supplier);
-            }
-            rawMaterial.setSuppliers(suppliers);
-        }
-
         RawMaterial savedMaterial = rawMaterialRepository.save(rawMaterial);
+        
         log.info("Raw material created successfully with ID: {}", savedMaterial.getIdMaterial());
-
         return rawMaterialMapper.toDTO(savedMaterial);
     }
 
@@ -64,16 +58,6 @@ public class RawMaterialService implements IRawMaterialService {
         existingMaterial.setStock(rawMaterialDTO.getStock());
         existingMaterial.setStockMin(rawMaterialDTO.getStockMin());
         existingMaterial.setUnit(rawMaterialDTO.getUnit());
-
-        if (rawMaterialDTO.getSupplierIds() != null) {
-            Set<Supplier> suppliers = new HashSet<>();
-            for (Long supplierId : rawMaterialDTO.getSupplierIds()) {
-                Supplier supplier = supplierRepository.findById(supplierId)
-                        .orElseThrow(() -> new SupplierNotFoundException(supplierId));
-                suppliers.add(supplier);
-            }
-            existingMaterial.setSuppliers(suppliers);
-        }
 
         RawMaterial updatedMaterial = rawMaterialRepository.save(existingMaterial);
         log.info("Raw material updated successfully with ID: {}", updatedMaterial.getIdMaterial());
@@ -119,7 +103,6 @@ public class RawMaterialService implements IRawMaterialService {
     public List<RawMaterialDTO> getAllRawMaterialsBelowMinimumStock() {
         log.info("Fetching all raw materials below minimum stock");
 
-        // Using Spring Data JPA query derivation
         List<RawMaterial> materials = rawMaterialRepository.findByStockLessThanStockMin();
         return materials.stream()
                 .map(rawMaterialMapper::toDTO)
@@ -139,19 +122,75 @@ public class RawMaterialService implements IRawMaterialService {
     }
 
     @Override
-    public RawMaterialDTO addSupplierToMaterial(Long materialId, Long supplierId) {
-        log.info("Adding supplier {} to raw material {}", supplierId, materialId);
+    public RawMaterialDTO addSupplierToMaterial(Long materialId, SupplierMaterialDTO supplierMaterialDTO) {
+        log.info("Adding supplier {} to raw material {} with attributes", 
+                supplierMaterialDTO.getSupplierId(), materialId);
 
         RawMaterial material = rawMaterialRepository.findById(materialId)
                 .orElseThrow(() -> new RawMaterialNotFoundException(materialId));
 
+        Long supplierId = supplierMaterialDTO.getSupplierId();
         Supplier supplier = supplierRepository.findById(supplierId)
                 .orElseThrow(() -> new SupplierNotFoundException(supplierId));
 
-        material.getSuppliers().add(supplier);
+        // Check if relationship already exists
+        if (supplierMaterialRepository.existsBySupplierIdSupplierAndRawMaterialIdMaterial(supplierId, materialId)) {
+            log.warn("Supplier {} is already linked to material {}. Use update endpoint instead.", 
+                    supplierId, materialId);
+            return rawMaterialMapper.toDTO(material);
+        }
+
+        // Create the new relationship
+        SupplierMaterial supplierMaterial = SupplierMaterial.builder()
+                .id(new SupplierMaterialId(supplierId, materialId))
+                .supplier(supplier)
+                .rawMaterial(material)
+                .unitPrice(supplierMaterialDTO.getUnitPrice())
+                .minOrderQuantity(supplierMaterialDTO.getMinOrderQuantity())
+                .leadTimeDays(supplierMaterialDTO.getLeadTimeDays())
+                .isPreferred(supplierMaterialDTO.getIsPreferred() != null ? supplierMaterialDTO.getIsPreferred() : false)
+                .build();
+
+        material.getSupplierLinks().add(supplierMaterial);
         RawMaterial updatedMaterial = rawMaterialRepository.save(material);
 
-        log.info("Supplier added successfully to material");
+        log.info("Supplier {} added successfully to material {} with pricing info", supplierId, materialId);
+        return rawMaterialMapper.toDTO(updatedMaterial);
+    }
+
+    @Override
+    public RawMaterialDTO updateSupplierRelationship(Long materialId, Long supplierId, 
+                                                      SupplierMaterialDTO supplierMaterialDTO) {
+        log.info("Updating supplier {} relationship with material {}", supplierId, materialId);
+
+        RawMaterial material = rawMaterialRepository.findById(materialId)
+                .orElseThrow(() -> new RawMaterialNotFoundException(materialId));
+
+        SupplierMaterialId id = new SupplierMaterialId(supplierId, materialId);
+        SupplierMaterial existingLink = supplierMaterialRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        String.format("Supplier %d is not linked to material %d", supplierId, materialId)));
+
+        // Update the relationship attributes
+        if (supplierMaterialDTO.getUnitPrice() != null) {
+            existingLink.setUnitPrice(supplierMaterialDTO.getUnitPrice());
+        }
+        if (supplierMaterialDTO.getMinOrderQuantity() != null) {
+            existingLink.setMinOrderQuantity(supplierMaterialDTO.getMinOrderQuantity());
+        }
+        if (supplierMaterialDTO.getLeadTimeDays() != null) {
+            existingLink.setLeadTimeDays(supplierMaterialDTO.getLeadTimeDays());
+        }
+        if (supplierMaterialDTO.getIsPreferred() != null) {
+            existingLink.setIsPreferred(supplierMaterialDTO.getIsPreferred());
+        }
+
+        supplierMaterialRepository.save(existingLink);
+        log.info("Supplier {} relationship with material {} updated successfully", supplierId, materialId);
+
+        // Reload material to get updated relationships
+        RawMaterial updatedMaterial = rawMaterialRepository.findById(materialId)
+                .orElseThrow(() -> new RawMaterialNotFoundException(materialId));
         return rawMaterialMapper.toDTO(updatedMaterial);
     }
 
@@ -162,13 +201,28 @@ public class RawMaterialService implements IRawMaterialService {
         RawMaterial material = rawMaterialRepository.findById(materialId)
                 .orElseThrow(() -> new RawMaterialNotFoundException(materialId));
 
-        Supplier supplier = supplierRepository.findById(supplierId)
-                .orElseThrow(() -> new SupplierNotFoundException(supplierId));
+        // Find and remove the supplier link
+        SupplierMaterialId id = new SupplierMaterialId(supplierId, materialId);
+        material.getSupplierLinks().removeIf(link -> 
+                link.getId().equals(id));
 
-        material.getSuppliers().remove(supplier);
         RawMaterial updatedMaterial = rawMaterialRepository.save(material);
 
-        log.info("Supplier removed successfully from material");
+        log.info("Supplier {} removed successfully from material {}", supplierId, materialId);
         return rawMaterialMapper.toDTO(updatedMaterial);
+    }
+
+    @Override
+    public List<SupplierMaterialDTO> getSuppliersForMaterial(Long materialId) {
+        log.info("Fetching all suppliers for material {}", materialId);
+
+        if (!rawMaterialRepository.existsById(materialId)) {
+            throw new RawMaterialNotFoundException(materialId);
+        }
+
+        List<SupplierMaterial> supplierLinks = supplierMaterialRepository.findAllByMaterial(materialId);
+        return supplierLinks.stream()
+                .map(supplierMaterialMapper::toDTO)
+                .collect(Collectors.toList());
     }
 }

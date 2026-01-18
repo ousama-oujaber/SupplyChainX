@@ -6,9 +6,11 @@ import com.protocol.supplychainx.common.exceptions.procurement.SupplierNotFoundE
 import com.protocol.supplychainx.common.exceptions.procurement.SupplyOrderCannotBeDeletedException;
 import com.protocol.supplychainx.common.exceptions.procurement.SupplyOrderNotFoundException;
 import com.protocol.supplychainx.procurement.dto.SupplyOrderDTO;
+import com.protocol.supplychainx.procurement.dto.SupplyOrderItemDTO;
 import com.protocol.supplychainx.procurement.entity.RawMaterial;
 import com.protocol.supplychainx.procurement.entity.Supplier;
 import com.protocol.supplychainx.procurement.entity.SupplyOrder;
+import com.protocol.supplychainx.procurement.entity.SupplyOrderItem;
 import com.protocol.supplychainx.procurement.mapper.SupplyOrderMapper;
 import com.protocol.supplychainx.procurement.repository.RawMaterialRepository;
 import com.protocol.supplychainx.procurement.repository.SupplierRepository;
@@ -21,8 +23,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @Transactional
@@ -42,16 +44,26 @@ public class SupplyOrderService implements ISupplyOrderService {
         Supplier supplier = supplierRepository.findById(supplyOrderDTO.getSupplierId())
                 .orElseThrow(() -> new SupplierNotFoundException(supplyOrderDTO.getSupplierId()));
 
-        Set<RawMaterial> materials = new HashSet<>();
-        for (Long materialId : supplyOrderDTO.getMaterialIds()) {
-            RawMaterial material = rawMaterialRepository.findById(materialId)
-                    .orElseThrow(() -> new RawMaterialNotFoundException(materialId));
-            materials.add(material);
-        }
-
         SupplyOrder supplyOrder = supplyOrderMapper.toEntity(supplyOrderDTO);
         supplyOrder.setSupplier(supplier);
-        supplyOrder.setMaterials(materials);
+
+        // Process items
+        List<SupplyOrderItem> items = new ArrayList<>();
+        if (supplyOrderDTO.getItems() != null) {
+            for (SupplyOrderItemDTO itemDTO : supplyOrderDTO.getItems()) {
+                RawMaterial material = rawMaterialRepository.findById(itemDTO.getMaterialId())
+                        .orElseThrow(() -> new RawMaterialNotFoundException(itemDTO.getMaterialId()));
+                
+                SupplyOrderItem item = SupplyOrderItem.builder()
+                        .supplyOrder(supplyOrder)
+                        .rawMaterial(material)
+                        .quantity(itemDTO.getQuantity())
+                        .unitPrice(itemDTO.getUnitPrice())
+                        .build();
+                items.add(item);
+            }
+        }
+        supplyOrder.setItems(items);
 
         SupplyOrder savedOrder = supplyOrderRepository.save(supplyOrder);
         log.info("Supply order created successfully with ID: {}", savedOrder.getIdOrder());
@@ -72,14 +84,24 @@ public class SupplyOrderService implements ISupplyOrderService {
             existingOrder.setSupplier(supplier);
         }
 
-        if (supplyOrderDTO.getMaterialIds() != null && !supplyOrderDTO.getMaterialIds().isEmpty()) {
-            Set<RawMaterial> materials = new HashSet<>();
-            for (Long materialId : supplyOrderDTO.getMaterialIds()) {
-                RawMaterial material = rawMaterialRepository.findById(materialId)
-                        .orElseThrow(() -> new RawMaterialNotFoundException(materialId));
-                materials.add(material);
+        // Update items if provided
+        if (supplyOrderDTO.getItems() != null && !supplyOrderDTO.getItems().isEmpty()) {
+            // Clear existing items
+            existingOrder.getItems().clear();
+            
+            // Add new items
+            for (SupplyOrderItemDTO itemDTO : supplyOrderDTO.getItems()) {
+                RawMaterial material = rawMaterialRepository.findById(itemDTO.getMaterialId())
+                        .orElseThrow(() -> new RawMaterialNotFoundException(itemDTO.getMaterialId()));
+                
+                SupplyOrderItem item = SupplyOrderItem.builder()
+                        .supplyOrder(existingOrder)
+                        .rawMaterial(material)
+                        .quantity(itemDTO.getQuantity())
+                        .unitPrice(itemDTO.getUnitPrice())
+                        .build();
+                existingOrder.getItems().add(item);
             }
-            existingOrder.setMaterials(materials);
         }
 
         existingOrder.setOrderDate(supplyOrderDTO.getOrderDate());
@@ -153,10 +175,48 @@ public class SupplyOrderService implements ISupplyOrderService {
         SupplyOrder supplyOrder = supplyOrderRepository.findById(id)
                 .orElseThrow(() -> new SupplyOrderNotFoundException(id));
 
+        SupplyOrderStatus currentStatus = supplyOrder.getStatus();
+
+        // Prevent changing status from RECUE to avoid double-counting stock
+        if (currentStatus == SupplyOrderStatus.RECUE) {
+            log.warn("Cannot change status of already received order {}. Current status: {}", id, currentStatus);
+            throw new IllegalStateException("Cannot change status of a received order. Stock has already been updated.");
+        }
+
+        // If transitioning to RECUE, update the stock of all materials in the order
+        if (status == SupplyOrderStatus.RECUE) {
+            log.info("Order {} is being marked as received. Updating material stock.", id);
+            updateMaterialStock(supplyOrder);
+        }
+
         supplyOrder.setStatus(status);
         SupplyOrder updatedOrder = supplyOrderRepository.save(supplyOrder);
 
-        log.info("Supply order status updated successfully");
+        log.info("Supply order status updated successfully to {}", status);
         return supplyOrderMapper.toDTO(updatedOrder);
     }
+
+    /**
+     * Updates the stock of all materials in a supply order.
+     * Called when an order is marked as received (RECUE).
+     */
+    private void updateMaterialStock(SupplyOrder supplyOrder) {
+        for (SupplyOrderItem item : supplyOrder.getItems()) {
+            RawMaterial material = item.getRawMaterial();
+            int currentStock = material.getStock() != null ? material.getStock() : 0;
+            int quantityReceived = item.getQuantity() != null ? item.getQuantity() : 0;
+            int newStock = currentStock + quantityReceived;
+
+            material.setStock(newStock);
+            rawMaterialRepository.save(material);
+
+            log.info("Updated stock for material '{}' (ID: {}): {} + {} = {}", 
+                    material.getName(), 
+                    material.getIdMaterial(), 
+                    currentStock, 
+                    quantityReceived, 
+                    newStock);
+        }
+    }
 }
+

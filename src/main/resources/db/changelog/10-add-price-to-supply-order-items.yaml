@@ -1,0 +1,19 @@
+databaseChangeLog:
+  - changeSet:
+      id: add-price-columns-to-supply-order-items
+      author: system
+      comment: Add unit_price and sub_total columns to supply_order_items table
+      changes:
+        - addColumn:
+            tableName: supply_order_items
+            columns:
+              - column:
+                  name: unit_price
+                  type: DOUBLE
+                  constraints:
+                    nullable: true
+              - column:
+                  name: sub_total
+                  type: DOUBLE
+                  constraints:
+                    nullable: true

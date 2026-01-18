@@ -3,6 +3,9 @@ package com.protocol.supplychainx.procurement.dto;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -29,4 +32,11 @@ public class SupplierDTO {
     private Integer leadTime;
 
     private Integer activeOrdersCount; // Number of active orders
+    
+    /**
+     * Materials this supplier provides with pricing and order details.
+     * Used for display/response. For managing relationships, use dedicated endpoints.
+     */
+    @Builder.Default
+    private Set<SupplierMaterialDTO> materials = new HashSet<>();
 }

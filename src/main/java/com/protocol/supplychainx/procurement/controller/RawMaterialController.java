@@ -1,6 +1,7 @@
 package com.protocol.supplychainx.procurement.controller;
 
 import com.protocol.supplychainx.procurement.dto.RawMaterialDTO;
+import com.protocol.supplychainx.procurement.dto.SupplierMaterialDTO;
 import com.protocol.supplychainx.procurement.service.IRawMaterialService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -133,21 +134,56 @@ public class RawMaterialController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{materialId}/suppliers/{supplierId}")
-    @Operation(summary = "Add supplier to material", description = "Associate a supplier with a raw material")
+    // ===== SUPPLIER RELATIONSHIP ENDPOINTS =====
+
+    @GetMapping("/{materialId}/suppliers")
+    @Operation(summary = "Get all suppliers for a material", 
+               description = "Retrieve all suppliers providing this material with pricing details")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Supplier added successfully"),
-            @ApiResponse(responseCode = "404", description = "Material or supplier not found")
+            @ApiResponse(responseCode = "200", description = "Suppliers retrieved successfully"),
+            @ApiResponse(responseCode = "404", description = "Material not found")
+    })
+    public ResponseEntity<List<SupplierMaterialDTO>> getSuppliersForMaterial(
+            @Parameter(description = "Material ID") @PathVariable Long materialId) {
+        List<SupplierMaterialDTO> suppliers = rawMaterialService.getSuppliersForMaterial(materialId);
+        return ResponseEntity.ok(suppliers);
+    }
+
+    @PostMapping("/{materialId}/suppliers")
+    @Operation(summary = "Add supplier to material", 
+               description = "Associate a supplier with a raw material including pricing information")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Supplier added successfully"),
+            @ApiResponse(responseCode = "404", description = "Material or supplier not found"),
+            @ApiResponse(responseCode = "400", description = "Invalid input data")
     })
     public ResponseEntity<RawMaterialDTO> addSupplierToMaterial(
             @Parameter(description = "Material ID") @PathVariable Long materialId,
-            @Parameter(description = "Supplier ID") @PathVariable Long supplierId) {
-        RawMaterialDTO material = rawMaterialService.addSupplierToMaterial(materialId, supplierId);
+            @Valid @RequestBody SupplierMaterialDTO supplierMaterialDTO) {
+        RawMaterialDTO material = rawMaterialService.addSupplierToMaterial(materialId, supplierMaterialDTO);
+        return new ResponseEntity<>(material, HttpStatus.CREATED);
+    }
+
+    @PutMapping("/{materialId}/suppliers/{supplierId}")
+    @Operation(summary = "Update supplier relationship", 
+               description = "Update pricing and order details for a supplier-material relationship")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Relationship updated successfully"),
+            @ApiResponse(responseCode = "404", description = "Material or supplier relationship not found"),
+            @ApiResponse(responseCode = "400", description = "Invalid input data")
+    })
+    public ResponseEntity<RawMaterialDTO> updateSupplierRelationship(
+            @Parameter(description = "Material ID") @PathVariable Long materialId,
+            @Parameter(description = "Supplier ID") @PathVariable Long supplierId,
+            @Valid @RequestBody SupplierMaterialDTO supplierMaterialDTO) {
+        RawMaterialDTO material = rawMaterialService.updateSupplierRelationship(
+                materialId, supplierId, supplierMaterialDTO);
         return ResponseEntity.ok(material);
     }
 
     @DeleteMapping("/{materialId}/suppliers/{supplierId}")
-    @Operation(summary = "Remove supplier from material", description = "Remove a supplier association from a raw material")
+    @Operation(summary = "Remove supplier from material", 
+               description = "Remove a supplier association from a raw material")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Supplier removed successfully"),
             @ApiResponse(responseCode = "404", description = "Material or supplier not found")

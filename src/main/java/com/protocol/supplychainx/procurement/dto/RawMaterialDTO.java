@@ -3,6 +3,7 @@ package com.protocol.supplychainx.procurement.dto;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
+import java.util.HashSet;
 import java.util.Set;
 
 @Getter
@@ -30,7 +31,12 @@ public class RawMaterialDTO {
     @Size(max = 20, message = "Unit must not exceed 20 characters")
     private String unit;
 
-    private Set<Long> supplierIds; // IDs of associated suppliers
+    /**
+     * Supplier relationships with additional attributes (price, quantity, lead time).
+     * Used for display/response. For creating/updating relationships, use the dedicated endpoints.
+     */
+    @Builder.Default
+    private Set<SupplierMaterialDTO> suppliers = new HashSet<>();
     
     private Boolean isBelowMinimum; // Calculated field
 }

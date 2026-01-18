@@ -2,6 +2,7 @@ package com.protocol.supplychainx.procurement.dto;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.*;
 
 @Getter
@@ -21,4 +22,10 @@ public class SupplyOrderItemDTO {
     @NotNull(message = "Quantity cannot be null")
     @Min(value = 1, message = "Quantity must be at least 1")
     private Integer quantity;
+
+    @PositiveOrZero(message = "Unit price must be zero or positive")
+    private Double unitPrice;
+
+    private Double subTotal; // Calculated automatically
 }
+

@@ -1,0 +1,177 @@
+@startuml SupplyChainX_Diagramme_Classe
+
+!define ENTITY_COLOR #E8F5E9
+!define ENUM_COLOR #FFF3E0
+
+' Entités Communes
+package "Entités Communes" {
+    class Utilisateur {
+        - idUtilisateur: Long
+        - prenom: String
+        - nom: String
+        - email: String
+        - motDePasse: String
+        - role: RoleUtilisateur
+    }
+    
+    enum RoleUtilisateur <<enumeration>> {
+        GESTIONNAIRE_APPROVISIONNEMENT
+        RESPONSABLE_ACHATS
+        SUPERVISEUR_LOGISTIQUE
+        CHEF_PRODUCTION
+        PLANIFICATEUR
+        SUPERVISEUR_PRODUCTION
+        GESTIONNAIRE_COMMERCIAL
+        RESPONSABLE_LOGISTIQUE
+        SUPERVISEUR_LIVRAISONS
+        ADMIN
+    }
+}
+
+' Module Approvisionnement
+package "Module Approvisionnement" <<ENTITY_COLOR>> {
+    class Fournisseur {
+        - idFournisseur: Long
+        - nom: String
+        - contact: String
+        - noteFiabilite: Double
+        - delaiLivraison: Integer
+        - commandes: List<CommandeApprovisionnement>
+    }
+    
+    class MatierePremiere {
+        - idMatiere: Long
+        - nom: String
+        - stock: Integer
+        - stockMin: Integer
+        - unite: String
+        - fournisseurs: List<Fournisseur>
+    }
+    
+    class CommandeApprovisionnement {
+        - idCommande: Long
+        - fournisseur: Fournisseur
+        - dateCommande: LocalDate
+        - statut: StatutCommandeApprovisionnement
+        - items: List<FournisseurCommandeItem>
+    }
+    
+    ' Nouvelle table pivot entre MatierePremiere et CommandeApprovisionnement
+    class FournisseurCommandeItem {
+        - idItem: Long
+        - commande: CommandeApprovisionnement
+        - matierePremiere: MatierePremiere
+        - quantite: Integer
+        - prixUnitaire: Double
+        - sousTotal: Double
+    }
+    
+    enum StatutCommandeApprovisionnement <<ENUM_COLOR>> {
+        EN_ATTENTE
+        EN_COURS
+        RECUE
+    }
+}
+
+' Module Production
+package "Module Production" <<ENTITY_COLOR>> {
+    class Produit {
+        - idProduit: Long
+        - nom: String
+        - tempsProduction: Integer
+        - coutUnitaire: Double
+        - stock: Integer
+    }
+    
+    class ListeMaterielProduit {
+        - idBOM: Long
+        - produit: Produit
+        - matiere: MatierePremiere
+        - quantite: Integer
+    }
+    
+    class OrdreProduction {
+        - idOrdre: Long
+        - produit: Produit
+        - quantite: Integer
+        - statut: StatutOrdreProduction
+        - dateDebut: LocalDate
+        - dateFin: LocalDate
+    }
+    
+    enum StatutOrdreProduction <<ENUM_COLOR>> {
+        EN_ATTENTE
+        EN_PRODUCTION
+        TERMINE
+        BLOQUE
+    }
+}
+
+' Module Livraison
+package "Module Livraison" <<ENTITY_COLOR>> {
+    class Client {
+        - idClient: Long
+        - nom: String
+        - adresse: String
+        - ville: String
+        - commandes: List<CommandeClient>
+    }
+    
+    class CommandeClient {
+        - idCommande: Long
+        - client: Client
+        - produit: Produit
+        - quantite: Integer
+        - statut: StatutCommandeClient
+    }
+    
+    class Livraison {
+        - idLivraison: Long
+        - commande: CommandeClient
+        - vehicule: String
+        - chauffeur: String
+        - statut: StatutLivraison
+        - dateLivraison: LocalDate
+        - coutTotal: Double
+    }
+    
+    enum StatutCommandeClient <<ENUM_COLOR>> {
+        EN_PREPARATION
+        EN_ROUTE
+        LIVREE
+    }
+    
+    enum StatutLivraison <<ENUM_COLOR>> {
+        PLANIFIEE
+        EN_COURS
+        LIVREE
+    }
+}
+
+' Relations Module Approvisionnement
+Fournisseur "1..1" --> "0..*" CommandeApprovisionnement : possède
+CommandeApprovisionnement --> StatutCommandeApprovisionnement
+
+' Nouvelle relation pivot
+CommandeApprovisionnement "1" --> "0..*" FournisseurCommandeItem : contient
+FournisseurCommandeItem "*" --> "1" MatierePremiere : référence
+
+MatierePremiere "*" --> "*" Fournisseur : fourni par
+
+' Relations Module Production
+Produit "1" --> "0..*" ListeMaterielProduit : défini par
+ListeMaterielProduit "*" --> "1" MatierePremiere : utilise
+Produit "1" --> "0..*" OrdreProduction : produit
+OrdreProduction --> StatutOrdreProduction
+
+' Relations Module Livraison
+Client "1" --> "0..*" CommandeClient : passe
+CommandeClient "*" --> "1" Produit : contient
+CommandeClient "1" --> "1" Livraison : associée à
+CommandeClient --> StatutCommandeClient
+Livraison --> StatutLivraison
+
+' Relation Utilisateur
+Utilisateur --> RoleUtilisateur
+
+@enduml
