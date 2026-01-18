@@ -2,8 +2,7 @@
 .git
 .gitignore
 
-# Maven
-target/
+# Maven (keep target/ to allow copying the JAR)
 .mvn/
 mvnw
 mvnw.cmd
@@ -28,3 +27,11 @@ Dockerfile
 docker-compose.yml
 compose.yaml
 .dockerignore
+
+# Source (not needed when copying only JAR)
+src/
+pom.xml
+docs/
+diagrams/
+schema/
+keycloak/
