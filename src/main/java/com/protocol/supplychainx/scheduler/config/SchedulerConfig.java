@@ -5,19 +5,10 @@ import org.springframework.scheduling.annotation.SchedulingConfigurer;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 
-/**
- * Configuration for Spring Scheduler
- * Configures a thread pool for scheduled tasks to run concurrently
- */
+
 @Configuration
 public class SchedulerConfig implements SchedulingConfigurer {
 
-    /**
-     * Configure task scheduler with a thread pool
-     * This allows multiple scheduled tasks to run concurrently without blocking each other
-     *
-     * @param taskRegistrar The task registrar to configure
-     */
     @Override
     public void configureTasks(ScheduledTaskRegistrar taskRegistrar) {
         ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
