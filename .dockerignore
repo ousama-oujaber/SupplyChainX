@@ -1,11 +1,10 @@
 # Git
 .git
 .gitignore
+.github
 
-# Maven (keep target/ to allow copying the JAR)
-.mvn/
-mvnw
-mvnw.cmd
+# Build artifacts (will be built inside Docker)
+target/
 
 # IDE
 .idea/
@@ -22,16 +21,18 @@ Thumbs.db
 # Logs
 *.log
 
-# Docker
-Dockerfile
-docker-compose.yml
-compose.yaml
+# Docker files (not needed in image)
 .dockerignore
+compose.yaml
+docker-compose.yml
 
-# Source (not needed when copying only JAR)
-src/
-pom.xml
+# Documentation (not needed in image)
 docs/
 diagrams/
+README.md
+
+# Schema files (loaded via Liquibase in resources)
 schema/
+
+# Keycloak realm config (loaded via compose)
 keycloak/
