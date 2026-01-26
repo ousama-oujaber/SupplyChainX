@@ -7,6 +7,7 @@ This guide provides comprehensive instructions for deploying the SupplyChainX ba
 - [CI/CD Setup](#cicd-setup)
 - [Local Docker Deployment](#local-docker-deployment)
 - [Production Deployment](#production-deployment)
+- [DigitalOcean Deployment](DIGITALOCEAN_DEPLOYMENT.md) - **Step-by-step guide for deploying to DigitalOcean**
 - [Troubleshooting](#troubleshooting)
 
 ## Prerequisites
