@@ -1,0 +1,33 @@
+version: '3.8'
+
+# Docker Compose for deploying ONLY the backend app
+# Use this when you have an external database server
+
+services:
+  app:
+    image: ${DOCKER_HUB_USERNAME}/supplychainx:${IMAGE_TAG:-backend}
+    container_name: supplychainx-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    environment:
+      # Database Configuration (External MySQL)
+      SPRING_DATASOURCE_URL: jdbc:mysql://${DB_HOST}:${DB_PORT:-3306}/${DB_NAME}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: ${DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+
+      # Liquibase Configuration (same as datasource)
+      SPRING_LIQUIBASE_URL: jdbc:mysql://${DB_HOST}:${DB_PORT:-3306}/${DB_NAME}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_LIQUIBASE_USER: ${DB_USER}
+      SPRING_LIQUIBASE_PASSWORD: ${DB_PASSWORD}
+
+      # Keycloak Configuration (External Keycloak)
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ${KEYCLOAK_URL}
+
+      # CORS Configuration
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:4200,https://localhost:4200}
+      # Optional: Email Configuration
+      # SPRING_MAIL_HOST: ${MAIL_HOST}
+      # SPRING_MAIL_PORT: ${MAIL_PORT}
+      # SPRING_MAIL_USERNAME: ${MAIL_USERNAME}
+      # SPRING_MAIL_PASSWORD: ${MAIL_PASSWORD}

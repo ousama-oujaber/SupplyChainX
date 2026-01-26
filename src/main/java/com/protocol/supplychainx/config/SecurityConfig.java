@@ -1,6 +1,7 @@
 package com.protocol.supplychainx.config;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -57,14 +58,18 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    @Value("${cors.allowed-origins}")
+    private String allowedOrigins;
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Only allow Angular frontend
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:4200",
-                "https://localhost:4200"
-        ));
+        
+        // Dynamically read allowed origins from application.properties
+        // Format: comma-separated list of origins
+        // Example: http://localhost:4200,https://yourdomain.com
+        configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
+        
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
